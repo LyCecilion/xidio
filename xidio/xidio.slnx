@@ -1,3 +1,6 @@
 <Solution>
+  <Project Path="xidio.CLI/xidio.CLI.csproj" Id="ed02a737-efb2-4146-acc0-043293679f95" />
   <Project Path="xidio.Core/xidio.Core.csproj" />
+  <Project Path="xidio.Platform.Windows/xidio.Platform.Windows.csproj" />
+  <Project Path="xidio.Platform.macOS/xidio.Platform.macOS.csproj" />
 </Solution>
