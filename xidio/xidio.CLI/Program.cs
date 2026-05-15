@@ -1,3 +1,4 @@
+using Spectre.Console;
 using xidio.Core.Abstractions;
 using xidio.Core.Diagnostics;
 #if WINDOWS
@@ -14,7 +15,7 @@ internal static class Program
     {
         var collector = new NetworkDiagnosticsCollector(CreatePlatformProvider());
         var report = collector.Collect();
-
+        
         ConsoleDiagnosticReporter.Print(report);
     }
 

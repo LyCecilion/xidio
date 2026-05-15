@@ -6,21 +6,16 @@ using xidio.Core.Models;
 
 namespace xidio.Core.Diagnostics;
 
-public sealed class NetworkDiagnosticsCollector
+public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvider? platformDiagnostics = null)
 {
-    private readonly IPlatformNetworkDiagnosticsProvider _platformDiagnostics;
-
-    public NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvider? platformDiagnostics = null)
-    {
-        _platformDiagnostics = platformDiagnostics ?? NoopPlatformNetworkDiagnosticsProvider.Instance;
-    }
-
+    private readonly IPlatformNetworkDiagnosticsProvider _platformDiagnostics = platformDiagnostics ?? NoopPlatformNetworkDiagnosticsProvider.Instance;
+    
     public NetworkDiagnosticReport Collect()
     {
         var collectedAt = DateTimeOffset.Now;
         var allInterfaces = NetworkInterface.GetAllNetworkInterfaces();
-        var physicalInterfaceIds = SafeGet(_platformDiagnostics.GetPhysicalNetworkInterfaceIds, Array.Empty<string>());
-        var adapterDriverInfos = SafeGet(_platformDiagnostics.GetNetworkAdapterDriverInfos, Array.Empty<NetworkAdapterDriverInfo>());
+        var physicalInterfaceIds = SafeGet(_platformDiagnostics.GetPhysicalNetworkInterfaceIds, []);
+        var adapterDriverInfos = SafeGet(_platformDiagnostics.GetNetworkAdapterDriverInfos, []);
         var primaryInterfaces = GetPrimaryInterfaces(allInterfaces, physicalInterfaceIds);
 
         return new NetworkDiagnosticReport
@@ -41,22 +36,16 @@ public sealed class NetworkDiagnosticsCollector
         var result = new List<PrimaryInterfaceInfo>();
         var hasPlatformPhysicalIds = physicalInterfaceIds.Count > 0;
 
-        foreach (var networkInterface in networkInterfaces)
-        {
-            var kind = ClassifyPrimaryInterface(networkInterface, physicalInterfaceIds, hasPlatformPhysicalIds);
-
-            if (kind is null)
-                continue;
-
-            var isUp = networkInterface.OperationalStatus == OperationalStatus.Up;
-            var wirelessInfo = isUp && kind == PrimaryInterfaceKind.Wireless
+        var query =
+            from networkInterface in networkInterfaces
+            let kind = ClassifyPrimaryInterface(networkInterface, physicalInterfaceIds, hasPlatformPhysicalIds)
+            where kind != null
+            let isUp = networkInterface.OperationalStatus == OperationalStatus.Up
+            let wirelessInfo = isUp && kind == PrimaryInterfaceKind.Wireless
                 ? SafeGet(() => _platformDiagnostics.GetWirelessConnectionInfo(networkInterface), null)
-                : null;
-            var networkDetails = isUp
-                ? GetNetworkDetails(networkInterface)
-                : null;
-
-            result.Add(new PrimaryInterfaceInfo
+                : null
+            let networkDetails = isUp ? GetNetworkDetails(networkInterface) : null
+            select new PrimaryInterfaceInfo
             {
                 Id = networkInterface.Id,
                 Name = networkInterface.Name,
@@ -66,34 +55,41 @@ public sealed class NetworkDiagnosticsCollector
                 NetworkInterfaceType = networkInterface.NetworkInterfaceType,
                 WirelessConnection = wirelessInfo,
                 NetworkDetails = networkDetails
-            });
-        }
+            };
+
+        result.AddRange(query);
 
         return result;
     }
 
-    private PrimaryInterfaceKind? ClassifyPrimaryInterface(
+    private static PrimaryInterfaceKind? ClassifyPrimaryInterface(
         NetworkInterface networkInterface,
         IReadOnlyCollection<string> physicalInterfaceIds,
         bool hasPlatformPhysicalIds)
     {
         var type = networkInterface.NetworkInterfaceType;
 
+        // 判断为 Ppp 后进一步判断是不是 Pppoe
         if (type == NetworkInterfaceType.Ppp)
             return LooksLikeRealPppInterface(networkInterface) ? PrimaryInterfaceKind.Pppoe : null;
 
+        // 去掉 Loopback, Tunnel, Unknown 等接口
         if (!IsEthernetType(type) && type != NetworkInterfaceType.Wireless80211)
             return null;
 
+        // 去掉虚拟接口
         if (LooksLikeVirtualAdapter(networkInterface.Name, networkInterface.Description))
             return null;
 
+        // 判断物理接口（物理接口 ID 列表）
         if (hasPlatformPhysicalIds && !physicalInterfaceIds.Contains(NormalizeGuid(networkInterface.Id)))
             return null;
 
+        // 最终判断是否是 Wireless80211
         if (type == NetworkInterfaceType.Wireless80211)
             return PrimaryInterfaceKind.Wireless;
-
+        
+        // 最终排除蓝牙，标记为 Ethernet
         return LooksLikeBluetooth(networkInterface.Name, networkInterface.Description)
             ? null
             : PrimaryInterfaceKind.Ethernet;
@@ -112,8 +108,8 @@ public sealed class NetworkDiagnosticsCollector
             return null;
         }
 
-        var routes = SafeGet(() => _platformDiagnostics.GetRoutes(networkInterface), Array.Empty<InterfaceRouteInfo>());
-        var metrics = SafeGet(() => _platformDiagnostics.GetInterfaceMetrics(networkInterface), Array.Empty<InterfaceMetricInfo>());
+        var routes = SafeGet(() => _platformDiagnostics.GetRoutes(networkInterface), []);
+        var metrics = SafeGet(() => _platformDiagnostics.GetInterfaceMetrics(networkInterface), []);
 
         return new InterfaceNetworkDetails
         {
@@ -186,52 +182,54 @@ public sealed class NetworkDiagnosticsCollector
             || text.StartsWith("bth\\");
     }
 
+    private static readonly string[] VirtualAdapterKeywords =
+    [
+        "vmware",
+        "vmnet",
+        "hyper-v",
+        "hyperv",
+        "vswitch",
+        "vethernet",
+        "virtualbox",
+        "host-only",
+        "wsl",
+        "tap-windows",
+        "tap adapter",
+        "tun adapter",
+        "wireguard",
+        "tailscale",
+        "zerotier",
+        "npcap",
+        "winpcap",
+        "packet driver",
+        "wi-fi direct",
+        "wifi direct",
+        "virtual wifi",
+        "bluetooth",
+        "蓝牙",
+        "filter",
+        "wan miniport",
+        "qos",
+        "packet scheduler",
+        "kernel debug",
+        "wfp"
+    ];
+
+    private static bool MatchesVirtualKeywords(string text)
+    {
+        return VirtualAdapterKeywords.Any(text.Contains);
+    }
+
     private static bool LooksLikeRealPppInterface(NetworkInterface networkInterface)
     {
         var text = $"{networkInterface.Name} {networkInterface.Description}".ToLowerInvariant();
-
-        if (text.Contains("npcap"))
-            return false;
-        if (text.Contains("packet scheduler"))
-            return false;
-        if (text.Contains("qos"))
-            return false;
-        if (text.Contains("wfp"))
-            return false;
-        if (text.Contains("filter"))
-            return false;
-
-        return true;
+        return !MatchesVirtualKeywords(text);
     }
 
     private static bool LooksLikeVirtualAdapter(string name, string description)
     {
         var text = $"{name} {description}".ToLowerInvariant();
-
-        return
-            text.Contains("vmware") ||
-            text.Contains("vmnet") ||
-            text.Contains("hyper-v") ||
-            text.Contains("hyperv") ||
-            text.Contains("vswitch") ||
-            text.Contains("vethernet") ||
-            text.Contains("virtualbox") ||
-            text.Contains("host-only") ||
-            text.Contains("wsl") ||
-            text.Contains("tap-windows") ||
-            text.Contains("tap adapter") ||
-            text.Contains("tun adapter") ||
-            text.Contains("wireguard") ||
-            text.Contains("tailscale") ||
-            text.Contains("zerotier") ||
-            text.Contains("npcap") ||
-            text.Contains("winpcap") ||
-            text.Contains("packet driver") ||
-            text.Contains("wi-fi direct") ||
-            text.Contains("wifi direct") ||
-            text.Contains("virtual wifi") ||
-            text.Contains("bluetooth") ||
-            text.Contains("蓝牙");
+        return MatchesVirtualKeywords(text);
     }
 
     private static T SafeGet<T>(Func<T> getValue, T fallback)

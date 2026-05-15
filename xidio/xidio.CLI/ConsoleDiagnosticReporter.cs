@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using Spectre.Console;
 using xidio.Core.Models;
 
 namespace xidio.CLI;
@@ -9,84 +10,88 @@ internal static class ConsoleDiagnosticReporter
     public static void Print(NetworkDiagnosticReport report)
     {
         PrintBanner();
-
-        Console.WriteLine("Now we're going to collect your device's basic network environment.\n");
+        AnsiConsole.WriteLine(PromptLocation());
         PrintTimestamp(report.CollectedAt);
-        PromptLocation();
         PrintNetworkInterfaces(report);
         PrintHostname(report.HostName);
         PrintProxyStatus(report.SystemProxy);
+        Console.ReadKey();
+    }
+
+    private static string PromptLocation()
+    {
+        return AnsiConsole.Prompt(new SelectionPrompt<string>()
+            .Title("你的设备目前位于哪里？通常情况下，同一设备在不同位置的表现也会有差异。")
+            .AddChoiceGroup("海棠公寓")
+            .AddChoiceGroup("竹园公寓")
+            .AddChoiceGroup("丁香公寓")
+            .AddChoiceGroup("图书馆", "A", "B", "C", "D")
+            .AddChoiceGroup("网安大楼", "人工智能", "网络安全", "集成电路", "计算机科学")
+            .AddChoiceGroup("家属区")
+            .AddChoiceGroup("综合楼", "旧综合楼", "新综合楼")
+            .AddChoiceGroup("其他", "公路或街道", "北校区", "其他")
+        );
     }
 
     private static void PrintBanner()
     {
-        Console.WriteLine("""
-                          ====================================================
-
-                            ___   ___  __   _______   __    ______
-                            \  \ /  / |  | |       \ |  |  /  __  \
-                             \  V  /  |  | |  .--.  ||  | |  |  |  |
-                              >   <   |  | |  |  |  ||  | |  |  |  |
-                             /  .  \  |  | |  '--'  ||  | |  `--'  |
-                            /__/ \__\ |__| |_______/ |__|  \______/   v0.1.0
-
-                           Xidian Internet Diagnostic Intelligence Operator
-                               Network intelligence at your fingertips.
-
-                           Early Development build - expect changes and bugs.
-                               Built by LyCecilion and xilin, with love.
-                                  Be affiliated with Project Hazelita.
-
-                          ====================================================
-
-                          """);
+        var appName = new FigletText("XIDIO")
+        {
+            Color = Color.Purple3,
+            Justification = Justify.Center
+        };
+  
+        var version = new Text("v0.1.0", new Style(Color.Purple3))
+        {
+            Justification = Justify.Center
+        };
+  
+        AnsiConsole.Write(appName);
+        AnsiConsole.Write(version);
+        Console.WriteLine();
+        AnsiConsole.Write(new Text("Xidian Internet Diagnostic Intelligence Operator / 西电校园网诊断工具"){ Justification = Justify.Center });
+        AnsiConsole.Write(new Text("由 Project Hazelita 开发 / 以 MIT License 开源"){ Justification = Justify.Center });
+        Console.WriteLine("\n\n");
     }
 
     private static void PrintTimestamp(DateTimeOffset collectedAt)
     {
-        Console.WriteLine(
-            $"Current time: {collectedAt:yyyy-MM-dd HH:mm:ss}. In Unix timestamp: {collectedAt.ToUnixTimeSeconds()}.\n");
-    }
-
-    private static void PromptLocation()
-    {
-        Console.WriteLine("""
-                          We need to know your current location to better assist you.
-                          Hmm... where are you right now? Or, if you're not with your device, where is your device?
-
-                              (1) Dormitory Building (Haitang, Zhuyuan or Dingxiang)
-                              (2) Library
-                              (3) Teaching Building (A, B, C, D, E or Xinyuan)
-                              (4) Cybersecurity Building (Sec, AI, CS or Mechatronics)
-                              (5) Faculty Residential Area
-                              (6) Complex Building (New or Old)
-                              (7) Roads
-                              (8) Others
-
-                          """);
+        AnsiConsole.MarkupLine(
+            $"[green]该诊断报告生成于 {collectedAt:yyyy-MM-dd HH:mm:ss}，Unix 时间戳 {collectedAt.ToUnixTimeSeconds()}。[/]");
+        Console.WriteLine();
     }
 
     private static void PrintNetworkInterfaces(NetworkDiagnosticReport report)
     {
-        Console.WriteLine(
-            $"We detected {report.TotalNetworkInterfaceCount} network interface(s), among which {report.PrimaryInterfaces.Count} seem(s) to be primary interfaces.\n");
+        Console.WriteLine($"检测到了 {report.NetworkAdapterDriverInfos.Count} 个物理网络适配器。\n");
 
-        Console.WriteLine("Below are detected physical network adapters and driver versions.\n");
-
+        var adapterTable = new Table().RoundedBorder().BorderColor(Color.Grey).Title("物理网络适配器");
+        
+        adapterTable.AddColumn(new TableColumn("适配器类型").Centered());
+        adapterTable.AddColumn(new TableColumn("适配器名称").Centered());
+        adapterTable.AddColumn(new TableColumn("驱动版本").Centered());
+        
         foreach (var adapter in report.NetworkAdapterDriverInfos)
         {
-            Console.WriteLine(
-                $"    {adapter.Name} | {adapter.Description} | Driver Version: {adapter.DriverVersion}");
+            adapterTable.AddRow(adapter.Name, adapter.Description, adapter.DriverVersion);
         }
+        
+        AnsiConsole.Write(adapterTable);
 
         Console.WriteLine();
-        Console.WriteLine("Below are detected primary connections.\n");
+        Console.WriteLine(
+            $"你的设备上共有 {report.TotalNetworkInterfaceCount} 个网络接口，其中 {report.PrimaryInterfaces.Count} 个是主要网络接口。\n");
+        
+        var primaryInterfacesTable = new Table().RoundedBorder().BorderColor(Color.Grey).Title("主要网络连接");
+
+        primaryInterfacesTable.AddColumn(new TableColumn("网络类型").Centered());
+        primaryInterfacesTable.AddColumn(new TableColumn("描述").Centered());
+        primaryInterfacesTable.AddColumn(new TableColumn("状态").Centered());
 
         foreach (var primaryInterface in report.PrimaryInterfaces)
         {
-            Console.WriteLine(
-                $"    {primaryInterface.Kind} | {primaryInterface.Name} | {primaryInterface.Description} | {primaryInterface.OperationalStatus}");
-
+            primaryInterfacesTable.AddRow(primaryInterface.Kind.ToString(), primaryInterface.Description, primaryInterface.OperationalStatus.ToString());
+            
             if (primaryInterface.WirelessConnection is not null)
             {
                 Console.WriteLine(
@@ -101,6 +106,8 @@ internal static class ConsoleDiagnosticReporter
             if (primaryInterface.NetworkDetails is not null)
                 PrintPrimaryInterfaceNetworkDetails(primaryInterface.NetworkDetails);
         }
+        
+        AnsiConsole.Write(primaryInterfacesTable);
     }
 
     private static void PrintPrimaryInterfaceNetworkDetails(InterfaceNetworkDetails details)
@@ -110,7 +117,8 @@ internal static class ConsoleDiagnosticReporter
         Console.WriteLine($"        Default Gateway(s): {FormatIpAddresses(details.DefaultGateways)}");
         Console.WriteLine($"        DHCP Server(s): {FormatIpAddresses(details.DhcpServers)}");
         Console.WriteLine($"        DNS Server(s): {FormatIpAddresses(details.DnsServers)}");
-        Console.WriteLine($"        Interface Metric: {FormatInterfaceMetrics(details.InterfaceMetrics, details.Routes)}");
+        Console.WriteLine(
+            $"        Interface Metric: {FormatInterfaceMetrics(details.InterfaceMetrics, details.Routes)}");
         Console.WriteLine("        Route Table Summary:");
         PrintRouteFamilySummary("IPv4", details.Routes, (int)AddressFamily.InterNetwork);
         PrintRouteFamilySummary("IPv6", details.Routes, (int)AddressFamily.InterNetworkV6);
@@ -227,7 +235,8 @@ internal static class ConsoleDiagnosticReporter
             ? "on-link"
             : $"via {route.NextHop}";
 
-        return $"{route.DestinationPrefix} {nextHop} (route {route.RouteMetric}, interface {route.InterfaceMetric}, total {route.TotalMetric})";
+        return
+            $"{route.DestinationPrefix} {nextHop} (route {route.RouteMetric}, interface {route.InterfaceMetric}, total {route.TotalMetric})";
     }
 
     private static string FormatAddressFamily(int addressFamily)

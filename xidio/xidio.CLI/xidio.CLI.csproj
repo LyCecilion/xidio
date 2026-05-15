@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net10.0-windows;net10.0</TargetFrameworks>
+    <TargetFramework Condition="'$(TargetFramework)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">net10.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PublishAot Condition="'$(TargetFramework)' == 'net10.0-windows'">true</PublishAot>
@@ -20,6 +21,10 @@
 
   <ItemGroup Condition="'$(TargetFramework)' != 'net10.0-windows'">
     <ProjectReference Include="..\xidio.Platform.macOS\xidio.Platform.macOS.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console" Version="0.55.2" />
   </ItemGroup>
 
 </Project>
