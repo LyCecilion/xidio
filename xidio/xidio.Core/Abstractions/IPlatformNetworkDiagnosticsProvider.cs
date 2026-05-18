@@ -5,13 +5,19 @@ namespace xidio.Core.Abstractions;
 
 public interface IPlatformNetworkDiagnosticsProvider
 {
-    IReadOnlyCollection<string> GetPhysicalNetworkInterfaceIds();
+    ValueTask<IReadOnlyCollection<string>> GetPhysicalNetworkInterfaceIdsAsync(CancellationToken cancellationToken);
 
-    IReadOnlyList<NetworkAdapterDriverInfo> GetNetworkAdapterDriverInfos();
+    ValueTask<IReadOnlyList<NetworkAdapterDriverInfo>> GetNetworkAdapterDriverInfosAsync(CancellationToken cancellationToken);
 
-    WirelessConnectionInfo? GetWirelessConnectionInfo(NetworkInterface networkInterface);
+    ValueTask<WirelessConnectionInfo?> GetWirelessConnectionInfoAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken);
 
-    IReadOnlyList<InterfaceMetricInfo> GetInterfaceMetrics(NetworkInterface networkInterface);
+    ValueTask<IReadOnlyList<InterfaceMetricInfo>> GetInterfaceMetricsAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken);
 
-    IReadOnlyList<InterfaceRouteInfo> GetRoutes(NetworkInterface networkInterface);
+    ValueTask<IReadOnlyList<InterfaceRouteInfo>> GetRoutesAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken);
 }

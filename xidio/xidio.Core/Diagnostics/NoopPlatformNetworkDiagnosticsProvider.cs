@@ -12,28 +12,34 @@ public sealed class NoopPlatformNetworkDiagnosticsProvider : IPlatformNetworkDia
     {
     }
 
-    public IReadOnlyCollection<string> GetPhysicalNetworkInterfaceIds()
+    public ValueTask<IReadOnlyCollection<string>> GetPhysicalNetworkInterfaceIdsAsync(CancellationToken cancellationToken)
     {
-        return Array.Empty<string>();
+        return ValueTask.FromResult<IReadOnlyCollection<string>>(Array.Empty<string>());
     }
 
-    public IReadOnlyList<NetworkAdapterDriverInfo> GetNetworkAdapterDriverInfos()
+    public ValueTask<IReadOnlyList<NetworkAdapterDriverInfo>> GetNetworkAdapterDriverInfosAsync(CancellationToken cancellationToken)
     {
-        return Array.Empty<NetworkAdapterDriverInfo>();
+        return ValueTask.FromResult<IReadOnlyList<NetworkAdapterDriverInfo>>(Array.Empty<NetworkAdapterDriverInfo>());
     }
 
-    public WirelessConnectionInfo? GetWirelessConnectionInfo(NetworkInterface networkInterface)
+    public ValueTask<WirelessConnectionInfo?> GetWirelessConnectionInfoAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
     {
-        return null;
+        return ValueTask.FromResult<WirelessConnectionInfo?>(null);
     }
 
-    public IReadOnlyList<InterfaceMetricInfo> GetInterfaceMetrics(NetworkInterface networkInterface)
+    public ValueTask<IReadOnlyList<InterfaceMetricInfo>> GetInterfaceMetricsAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
     {
-        return Array.Empty<InterfaceMetricInfo>();
+        return ValueTask.FromResult<IReadOnlyList<InterfaceMetricInfo>>(Array.Empty<InterfaceMetricInfo>());
     }
 
-    public IReadOnlyList<InterfaceRouteInfo> GetRoutes(NetworkInterface networkInterface)
+    public ValueTask<IReadOnlyList<InterfaceRouteInfo>> GetRoutesAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
     {
-        return Array.Empty<InterfaceRouteInfo>();
+        return ValueTask.FromResult<IReadOnlyList<InterfaceRouteInfo>>(Array.Empty<InterfaceRouteInfo>());
     }
 }

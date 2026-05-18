@@ -8,6 +8,8 @@ public sealed class NetworkDiagnosticReport
 
     public required string HostName { get; init; }
 
+    public required UserScenarioInfo UserScenario { get; init; }
+
     public required SystemProxyInfo SystemProxy { get; init; }
 
     public required IReadOnlyList<NetworkAdapterDriverInfo> NetworkAdapterDriverInfos { get; init; }

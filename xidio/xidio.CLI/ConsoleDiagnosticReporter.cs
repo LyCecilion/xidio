@@ -9,31 +9,14 @@ internal static class ConsoleDiagnosticReporter
 {
     public static void Print(NetworkDiagnosticReport report)
     {
-        PrintBanner();
-        AnsiConsole.WriteLine(PromptLocation());
         PrintTimestamp(report.CollectedAt);
+        PrintUserScenario(report.UserScenario);
         PrintNetworkInterfaces(report);
         PrintHostname(report.HostName);
         PrintProxyStatus(report.SystemProxy);
-        Console.ReadKey();
     }
 
-    private static string PromptLocation()
-    {
-        return AnsiConsole.Prompt(new SelectionPrompt<string>()
-            .Title("你的设备目前位于哪里？通常情况下，同一设备在不同位置的表现也会有差异。")
-            .AddChoiceGroup("海棠公寓")
-            .AddChoiceGroup("竹园公寓")
-            .AddChoiceGroup("丁香公寓")
-            .AddChoiceGroup("图书馆", "A", "B", "C", "D")
-            .AddChoiceGroup("网安大楼", "人工智能", "网络安全", "集成电路", "计算机科学")
-            .AddChoiceGroup("家属区")
-            .AddChoiceGroup("综合楼", "旧综合楼", "新综合楼")
-            .AddChoiceGroup("其他", "公路或街道", "北校区", "其他")
-        );
-    }
-
-    private static void PrintBanner()
+    public static void PrintBanner()
     {
         var appName = new FigletText("XIDIO")
         {
@@ -58,6 +41,16 @@ internal static class ConsoleDiagnosticReporter
     {
         AnsiConsole.MarkupLine(
             $"[green]该诊断报告生成于 {collectedAt:yyyy-MM-dd HH:mm:ss}，Unix 时间戳 {collectedAt.ToUnixTimeSeconds()}。[/]");
+        Console.WriteLine();
+    }
+
+    private static void PrintUserScenario(UserScenarioInfo scenario)
+    {
+        Console.WriteLine("用户场景信息:");
+        Console.WriteLine($"        位置: {scenario.Location}");
+        Console.WriteLine($"        连接方式: {FormatConnectionMethod(scenario.ConnectionMethod)}");
+        Console.WriteLine($"        主要问题: {FormatProblemSymptom(scenario.ProblemSymptom)}");
+        Console.WriteLine($"        影响范围: {FormatImpactScope(scenario.ImpactScope)}");
         Console.WriteLine();
     }
 
@@ -259,5 +252,44 @@ internal static class ConsoleDiagnosticReporter
             Console.WriteLine($"System Proxy is on. The proxy URL is {systemProxy.ProxyUri}.");
         else
             Console.WriteLine("System Proxy is off.");
+    }
+
+    private static string FormatConnectionMethod(ConnectionMethod connectionMethod)
+    {
+        return connectionMethod switch
+        {
+            ConnectionMethod.DirectCampusNetwork => "直接连接：校园 Wi-Fi / 宿舍有线 PPPoE",
+            ConnectionMethod.CampusNetworkViaRouter => "间接连接：通过路由器等设备",
+            ConnectionMethod.OtherNetwork => "其他连接：手机热点 / 校外网络等",
+            _ => "不确定"
+        };
+    }
+
+    private static string FormatProblemSymptom(ProblemSymptom problemSymptom)
+    {
+        return problemSymptom switch
+        {
+            ProblemSymptom.CannotConnectWifi => "连不上 Wi-Fi",
+            ProblemSymptom.ConnectedNoInternet => "连上了但显示无 Internet",
+            ProblemSymptom.CaptivePortalNotShown => "认证页不弹出",
+            ProblemSymptom.PortalAuthenticatedNoWeb => "认证成功但打不开网页",
+            ProblemSymptom.SomeApplicationsUnavailable => "部分应用能用，部分应用不能用",
+            ProblemSymptom.PppoeDialFailed => "有线拨号失败",
+            ProblemSymptom.PppoeConnectedNoInternet => "有线拨号成功但没有网",
+            ProblemSymptom.Other => "其他问题",
+            _ => "不确定"
+        };
+    }
+
+    private static string FormatImpactScope(ImpactScope impactScope)
+    {
+        return impactScope switch
+        {
+            ImpactScope.OnlyThisDevice => "只有这台设备",
+            ImpactScope.SameRoomOrDormitory => "同宿舍 / 同房间也有人遇到",
+            ImpactScope.SameFloorOrArea => "同楼层 / 附近区域也有人遇到",
+            ImpactScope.WiderArea => "更大范围都有人遇到",
+            _ => "不清楚"
+        };
     }
 }

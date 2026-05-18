@@ -8,9 +8,9 @@ namespace xidio.Platform.macOS;
 
 public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiagnosticsProvider
 {
-    public IReadOnlyCollection<string> GetPhysicalNetworkInterfaceIds()
+    public async ValueTask<IReadOnlyCollection<string>> GetPhysicalNetworkInterfaceIdsAsync(CancellationToken cancellationToken)
     {
-        var output = RunCommand("/usr/sbin/networksetup", "-listallhardwareports");
+        var output = await RunCommandAsync("/usr/sbin/networksetup", "-listallhardwareports", cancellationToken);
         if (output is null)
             return Array.Empty<string>();
 
@@ -29,13 +29,13 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
         return ids;
     }
 
-    public IReadOnlyList<NetworkAdapterDriverInfo> GetNetworkAdapterDriverInfos()
+    public async ValueTask<IReadOnlyList<NetworkAdapterDriverInfo>> GetNetworkAdapterDriverInfosAsync(CancellationToken cancellationToken)
     {
-        var hardwarePorts = ParseHardwarePorts();
+        var hardwarePorts = await ParseHardwarePortsAsync(cancellationToken);
         if (hardwarePorts.Count == 0)
             return Array.Empty<NetworkAdapterDriverInfo>();
 
-        var networkData = RunCommand("/usr/sbin/system_profiler", "SPNetworkDataType");
+        var networkData = await RunCommandAsync("/usr/sbin/system_profiler", "SPNetworkDataType", cancellationToken);
         var driverVersions = networkData is not null
             ? ParseNetworkDriverVersions(networkData)
             : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -43,6 +43,7 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
         var result = new List<NetworkAdapterDriverInfo>();
         foreach (var (device, portName) in hardwarePorts)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             driverVersions.TryGetValue(device, out var driverVersion);
 
             result.Add(new NetworkAdapterDriverInfo
@@ -56,13 +57,16 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
         return result;
     }
 
-    public WirelessConnectionInfo? GetWirelessConnectionInfo(NetworkInterface networkInterface)
+    public async ValueTask<WirelessConnectionInfo?> GetWirelessConnectionInfoAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var output = RunCommand(
+            var output = await RunCommandAsync(
                 "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport",
-                "-I");
+                "-I",
+                cancellationToken);
 
             if (output is null)
                 return null;
@@ -72,6 +76,8 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
 
             foreach (var line in output.Split('\n'))
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var trimmed = line.Trim();
                 if (trimmed.StartsWith("SSID:", StringComparison.OrdinalIgnoreCase))
                 {
@@ -95,18 +101,24 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
                 Bssid = bssid
             };
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch
         {
             return null;
         }
     }
 
-    public IReadOnlyList<InterfaceMetricInfo> GetInterfaceMetrics(NetworkInterface networkInterface)
+    public async ValueTask<IReadOnlyList<InterfaceMetricInfo>> GetInterfaceMetricsAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
     {
         var result = new List<InterfaceMetricInfo>();
         var interfaceId = networkInterface.Id;
 
-        var v4Metrics = GetInterfaceMetricFromRoutes(interfaceId, "inet");
+        var v4Metrics = await GetInterfaceMetricFromRoutesAsync(interfaceId, "inet", cancellationToken);
         if (v4Metrics.HasValue)
         {
             result.Add(new InterfaceMetricInfo
@@ -116,7 +128,7 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
             });
         }
 
-        var v6Metrics = GetInterfaceMetricFromRoutes(interfaceId, "inet6");
+        var v6Metrics = await GetInterfaceMetricFromRoutesAsync(interfaceId, "inet6", cancellationToken);
         if (v6Metrics.HasValue)
         {
             result.Add(new InterfaceMetricInfo
@@ -129,24 +141,27 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
         return result;
     }
 
-    public IReadOnlyList<InterfaceRouteInfo> GetRoutes(NetworkInterface networkInterface)
+    public async ValueTask<IReadOnlyList<InterfaceRouteInfo>> GetRoutesAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
     {
         var result = new List<InterfaceRouteInfo>();
         var interfaceId = networkInterface.Id;
 
-        result.AddRange(ParseNetstatRoutes(interfaceId, "inet", (int)AddressFamily.InterNetwork));
-        result.AddRange(ParseNetstatRoutes(interfaceId, "inet6", (int)AddressFamily.InterNetworkV6));
+        result.AddRange(await ParseNetstatRoutesAsync(interfaceId, "inet", (int)AddressFamily.InterNetwork, cancellationToken));
+        result.AddRange(await ParseNetstatRoutesAsync(interfaceId, "inet6", (int)AddressFamily.InterNetworkV6, cancellationToken));
 
         return result;
     }
 
-    private static List<InterfaceRouteInfo> ParseNetstatRoutes(
+    private static async Task<List<InterfaceRouteInfo>> ParseNetstatRoutesAsync(
         string interfaceId,
         string addressFamilyFlag,
-        int addressFamily)
+        int addressFamily,
+        CancellationToken cancellationToken)
     {
         var routes = new List<InterfaceRouteInfo>();
-        var output = RunCommand("/usr/sbin/netstat", $"-rn -f {addressFamilyFlag}");
+        var output = await RunCommandAsync("/usr/sbin/netstat", $"-rn -f {addressFamilyFlag}", cancellationToken);
         if (output is null)
             return routes;
 
@@ -155,6 +170,8 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
 
         foreach (var line in lines)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (string.IsNullOrWhiteSpace(line))
             {
                 if (inTable)
@@ -177,7 +194,6 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
 
             var destination = parts[0];
             var gateway = parts[1];
-            var flags = parts[2];
             var netif = parts[3];
 
             if (!string.Equals(netif, interfaceId, StringComparison.OrdinalIgnoreCase) &&
@@ -197,9 +213,12 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
         return routes;
     }
 
-    private static int? GetInterfaceMetricFromRoutes(string interfaceId, string addressFamilyFlag)
+    private static async Task<int?> GetInterfaceMetricFromRoutesAsync(
+        string interfaceId,
+        string addressFamilyFlag,
+        CancellationToken cancellationToken)
     {
-        var output = RunCommand("/usr/sbin/netstat", $"-rn -f {addressFamilyFlag}");
+        var output = await RunCommandAsync("/usr/sbin/netstat", $"-rn -f {addressFamilyFlag}", cancellationToken);
         if (output is null)
             return null;
 
@@ -208,6 +227,8 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
 
         foreach (var line in lines)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (string.IsNullOrWhiteSpace(line))
             {
                 if (inTable)
@@ -239,16 +260,18 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
         return null;
     }
 
-    private static Dictionary<string, string> ParseHardwarePorts()
+    private static async Task<Dictionary<string, string>> ParseHardwarePortsAsync(CancellationToken cancellationToken)
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var output = RunCommand("/usr/sbin/networksetup", "-listallhardwareports");
+        var output = await RunCommandAsync("/usr/sbin/networksetup", "-listallhardwareports", cancellationToken);
         if (output is null)
             return result;
 
         string? currentPort = null;
         foreach (var line in output.Split('\n'))
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var trimmed = line.Trim();
 
             if (trimmed.StartsWith("Hardware Port:", StringComparison.OrdinalIgnoreCase))
@@ -299,28 +322,50 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
         return result;
     }
 
-    private static string? RunCommand(string command, string arguments)
+    private static async Task<string?> RunCommandAsync(
+        string command,
+        string arguments,
+        CancellationToken cancellationToken)
     {
+        using var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = command,
+                Arguments = arguments,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            }
+        };
+
         try
         {
-            using var process = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = command,
-                    Arguments = arguments,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                }
-            };
-
             process.Start();
-            var output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit(5000);
+
+            var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+            var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+
+            await process.WaitForExitAsync(cancellationToken);
+
+            var output = await outputTask;
+            await errorTask;
 
             return process.ExitCode == 0 && !string.IsNullOrWhiteSpace(output) ? output : null;
+        }
+        catch (OperationCanceledException)
+        {
+            try
+            {
+                if (!process.HasExited)
+                    process.Kill(entireProcessTree: true);
+            }
+            catch
+            {
+            }
+
+            throw;
         }
         catch
         {

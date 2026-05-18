@@ -8,44 +8,122 @@ namespace xidio.Core.Diagnostics;
 
 public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvider? platformDiagnostics = null)
 {
+    private const int TotalProgressSteps = 6;
     private readonly IPlatformNetworkDiagnosticsProvider _platformDiagnostics = platformDiagnostics ?? NoopPlatformNetworkDiagnosticsProvider.Instance;
-    
+
     public NetworkDiagnosticReport Collect()
     {
+        return Collect(UserScenarioInfo.Unspecified);
+    }
+
+    public NetworkDiagnosticReport Collect(UserScenarioInfo userScenario)
+    {
+        return CollectAsync(userScenario).GetAwaiter().GetResult();
+    }
+
+    public Task<NetworkDiagnosticReport> CollectAsync(
+        IProgress<NetworkDiagnosticProgress>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        return CollectAsync(UserScenarioInfo.Unspecified, progress, cancellationToken);
+    }
+
+    public async Task<NetworkDiagnosticReport> CollectAsync(
+        UserScenarioInfo userScenario,
+        IProgress<NetworkDiagnosticProgress>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ReportProgress(progress, NetworkDiagnosticStage.Starting, "正在准备诊断环境", 0);
+
         var collectedAt = DateTimeOffset.Now;
         var allInterfaces = NetworkInterface.GetAllNetworkInterfaces();
-        var physicalInterfaceIds = SafeGet(_platformDiagnostics.GetPhysicalNetworkInterfaceIds, []);
-        var adapterDriverInfos = SafeGet(_platformDiagnostics.GetNetworkAdapterDriverInfos, []);
-        var primaryInterfaces = GetPrimaryInterfaces(allInterfaces, physicalInterfaceIds);
+        ReportProgress(progress, NetworkDiagnosticStage.NetworkInterfaces, "已读取系统网络接口", 1);
 
-        return new NetworkDiagnosticReport
+        var physicalInterfaceIds = await SafeGetAsync(
+            ct => _platformDiagnostics.GetPhysicalNetworkInterfaceIdsAsync(ct),
+            Array.Empty<string>(),
+            cancellationToken);
+        ReportProgress(progress, NetworkDiagnosticStage.PhysicalAdapters, "已识别物理网络适配器", 2);
+
+        var adapterDriverInfos = await SafeGetAsync(
+            ct => _platformDiagnostics.GetNetworkAdapterDriverInfosAsync(ct),
+            Array.Empty<NetworkAdapterDriverInfo>(),
+            cancellationToken);
+        ReportProgress(progress, NetworkDiagnosticStage.DriverInfo, "已读取网卡驱动信息", 3);
+
+        var primaryInterfaces = await GetPrimaryInterfacesAsync(
+            allInterfaces,
+            physicalInterfaceIds,
+            progress,
+            cancellationToken);
+        ReportProgress(progress, NetworkDiagnosticStage.PrimaryInterfaces, "已完成主要网络接口采集", 4);
+
+        var systemProxy = SafeGet(GetSystemProxyInfo, new SystemProxyInfo { IsEnabled = false });
+        ReportProgress(progress, NetworkDiagnosticStage.SystemProxy, "已读取系统代理状态", 5);
+
+        var report = new NetworkDiagnosticReport
         {
             CollectedAt = collectedAt,
             TotalNetworkInterfaceCount = allInterfaces.Length,
-            HostName = Dns.GetHostName(),
-            SystemProxy = GetSystemProxyInfo(),
+            HostName = SafeGet(Dns.GetHostName, "<unknown>"),
+            UserScenario = userScenario,
+            SystemProxy = systemProxy,
             NetworkAdapterDriverInfos = adapterDriverInfos,
             PrimaryInterfaces = primaryInterfaces
         };
+
+        ReportProgress(progress, NetworkDiagnosticStage.Completed, "诊断信息采集完成", TotalProgressSteps);
+        return report;
     }
 
-    private IReadOnlyList<PrimaryInterfaceInfo> GetPrimaryInterfaces(
+    private async Task<IReadOnlyList<PrimaryInterfaceInfo>> GetPrimaryInterfacesAsync(
         IEnumerable<NetworkInterface> networkInterfaces,
-        IReadOnlyCollection<string> physicalInterfaceIds)
+        IReadOnlyCollection<string> physicalInterfaceIds,
+        IProgress<NetworkDiagnosticProgress>? progress,
+        CancellationToken cancellationToken)
     {
         var result = new List<PrimaryInterfaceInfo>();
         var hasPlatformPhysicalIds = physicalInterfaceIds.Count > 0;
 
-        var query =
-            from networkInterface in networkInterfaces
-            let kind = ClassifyPrimaryInterface(networkInterface, physicalInterfaceIds, hasPlatformPhysicalIds)
-            where kind != null
-            let isUp = networkInterface.OperationalStatus == OperationalStatus.Up
-            let wirelessInfo = isUp && kind == PrimaryInterfaceKind.Wireless
-                ? SafeGet(() => _platformDiagnostics.GetWirelessConnectionInfo(networkInterface), null)
-                : null
-            let networkDetails = isUp ? GetNetworkDetails(networkInterface) : null
-            select new PrimaryInterfaceInfo
+        foreach (var networkInterface in networkInterfaces)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var kind = ClassifyPrimaryInterface(networkInterface, physicalInterfaceIds, hasPlatformPhysicalIds);
+            if (kind is null)
+                continue;
+
+            var isUp = networkInterface.OperationalStatus == OperationalStatus.Up;
+            WirelessConnectionInfo? wirelessInfo = null;
+            InterfaceNetworkDetails? networkDetails = null;
+
+            if (isUp && kind == PrimaryInterfaceKind.Wireless)
+            {
+                ReportProgress(
+                    progress,
+                    NetworkDiagnosticStage.WirelessInfo,
+                    $"正在读取无线连接信息：{networkInterface.Name}",
+                    3);
+
+                wirelessInfo = await SafeGetAsync(
+                    ct => _platformDiagnostics.GetWirelessConnectionInfoAsync(networkInterface, ct),
+                    null,
+                    cancellationToken);
+            }
+
+            if (isUp)
+            {
+                ReportProgress(
+                    progress,
+                    NetworkDiagnosticStage.NetworkDetails,
+                    $"正在读取网络配置：{networkInterface.Name}",
+                    3);
+
+                networkDetails = await GetNetworkDetailsAsync(networkInterface, cancellationToken);
+            }
+
+            result.Add(new PrimaryInterfaceInfo
             {
                 Id = networkInterface.Id,
                 Name = networkInterface.Name,
@@ -55,9 +133,8 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
                 NetworkInterfaceType = networkInterface.NetworkInterfaceType,
                 WirelessConnection = wirelessInfo,
                 NetworkDetails = networkDetails
-            };
-
-        result.AddRange(query);
+            });
+        }
 
         return result;
     }
@@ -88,19 +165,22 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
         // 最终判断是否是 Wireless80211
         if (type == NetworkInterfaceType.Wireless80211)
             return PrimaryInterfaceKind.Wireless;
-        
+
         // 最终排除蓝牙，标记为 Ethernet
         return LooksLikeBluetooth(networkInterface.Name, networkInterface.Description)
             ? null
             : PrimaryInterfaceKind.Ethernet;
     }
 
-    private InterfaceNetworkDetails? GetNetworkDetails(NetworkInterface networkInterface)
+    private async Task<InterfaceNetworkDetails?> GetNetworkDetailsAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
     {
         IPInterfaceProperties properties;
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             properties = networkInterface.GetIPProperties();
         }
         catch (NetworkInformationException)
@@ -108,8 +188,14 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
             return null;
         }
 
-        var routes = SafeGet(() => _platformDiagnostics.GetRoutes(networkInterface), []);
-        var metrics = SafeGet(() => _platformDiagnostics.GetInterfaceMetrics(networkInterface), []);
+        var routes = await SafeGetAsync(
+            ct => _platformDiagnostics.GetRoutesAsync(networkInterface, ct),
+            Array.Empty<InterfaceRouteInfo>(),
+            cancellationToken);
+        var metrics = await SafeGetAsync(
+            ct => _platformDiagnostics.GetInterfaceMetricsAsync(networkInterface, ct),
+            Array.Empty<InterfaceMetricInfo>(),
+            cancellationToken);
 
         return new InterfaceNetworkDetails
         {
@@ -148,7 +234,7 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
     private static SystemProxyInfo GetSystemProxyInfo()
     {
         var targetUri = new Uri("https://xidio.stellalyr.ink");
-        var handler = new HttpClientHandler();
+        using var handler = new HttpClientHandler();
         var defaultProxy = handler.Proxy ?? WebRequest.GetSystemWebProxy();
         var proxyUri = defaultProxy?.GetProxy(targetUri);
         var isEnabled = proxyUri is not null && proxyUri != targetUri;
@@ -232,11 +318,62 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
         return MatchesVirtualKeywords(text);
     }
 
+    private static void ReportProgress(
+        IProgress<NetworkDiagnosticProgress>? progress,
+        NetworkDiagnosticStage stage,
+        string message,
+        int completedSteps)
+    {
+        progress?.Report(new NetworkDiagnosticProgress
+        {
+            Stage = stage,
+            Message = message,
+            CompletedSteps = completedSteps,
+            TotalSteps = TotalProgressSteps
+        });
+    }
+
+    private static async ValueTask<T> SafeGetAsync<T>(
+        Func<CancellationToken, ValueTask<T>> getValue,
+        T fallback,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return await getValue(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (NetworkInformationException)
+        {
+            return fallback;
+        }
+        catch (NotSupportedException)
+        {
+            return fallback;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return fallback;
+        }
+        catch (Exception)
+        {
+            return fallback;
+        }
+    }
+
     private static T SafeGet<T>(Func<T> getValue, T fallback)
     {
         try
         {
             return getValue();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (NetworkInformationException)
         {

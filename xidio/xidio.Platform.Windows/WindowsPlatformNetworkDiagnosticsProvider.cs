@@ -7,7 +7,73 @@ namespace xidio.Platform.Windows;
 
 public sealed class WindowsPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiagnosticsProvider
 {
-    public IReadOnlyCollection<string> GetPhysicalNetworkInterfaceIds()
+    public async ValueTask<IReadOnlyCollection<string>> GetPhysicalNetworkInterfaceIdsAsync(CancellationToken cancellationToken)
+    {
+        return await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return GetPhysicalNetworkInterfaceIdsCore();
+        }, cancellationToken);
+    }
+
+    public async ValueTask<IReadOnlyList<NetworkAdapterDriverInfo>> GetNetworkAdapterDriverInfosAsync(CancellationToken cancellationToken)
+    {
+        return await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return GetNetworkAdapterDriverInfosCore();
+        }, cancellationToken);
+    }
+
+    public async ValueTask<WirelessConnectionInfo?> GetWirelessConnectionInfoAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(networkInterface.Id, out var interfaceGuid))
+            return null;
+
+        return await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                return WindowsWlanApi.GetCurrentConnection(interfaceGuid);
+            }
+            catch (DllNotFoundException)
+            {
+                return null;
+            }
+            catch (EntryPointNotFoundException)
+            {
+                return null;
+            }
+        }, cancellationToken);
+    }
+
+    public async ValueTask<IReadOnlyList<InterfaceMetricInfo>> GetInterfaceMetricsAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
+    {
+        return await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return GetInterfaceMetricsCore(networkInterface, cancellationToken);
+        }, cancellationToken);
+    }
+
+    public async ValueTask<IReadOnlyList<InterfaceRouteInfo>> GetRoutesAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
+    {
+        return await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return GetRoutesCore(networkInterface, cancellationToken);
+        }, cancellationToken);
+    }
+
+    private static IReadOnlyCollection<string> GetPhysicalNetworkInterfaceIdsCore()
     {
         var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -40,7 +106,7 @@ public sealed class WindowsPlatformNetworkDiagnosticsProvider : IPlatformNetwork
         return result;
     }
 
-    public IReadOnlyList<NetworkAdapterDriverInfo> GetNetworkAdapterDriverInfos()
+    private static IReadOnlyList<NetworkAdapterDriverInfo> GetNetworkAdapterDriverInfosCore()
     {
         var driverVersions = GetDriverVersionsByPnpDeviceId();
         var result = new List<NetworkAdapterDriverInfo>();
@@ -76,31 +142,16 @@ public sealed class WindowsPlatformNetworkDiagnosticsProvider : IPlatformNetwork
         return result;
     }
 
-    public WirelessConnectionInfo? GetWirelessConnectionInfo(NetworkInterface networkInterface)
-    {
-        if (!Guid.TryParse(networkInterface.Id, out var interfaceGuid))
-            return null;
-
-        try
-        {
-            return WindowsWlanApi.GetCurrentConnection(interfaceGuid);
-        }
-        catch (DllNotFoundException)
-        {
-            return null;
-        }
-        catch (EntryPointNotFoundException)
-        {
-            return null;
-        }
-    }
-
-    public IReadOnlyList<InterfaceMetricInfo> GetInterfaceMetrics(NetworkInterface networkInterface)
+    private static IReadOnlyList<InterfaceMetricInfo> GetInterfaceMetricsCore(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
     {
         var result = new List<InterfaceMetricInfo>();
 
         foreach (var interfaceIndex in GetInterfaceIndices(networkInterface))
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             using var searcher = new ManagementObjectSearcher(
                 new ManagementScope(@"\\.\ROOT\StandardCimv2"),
                 new ObjectQuery(
@@ -127,12 +178,16 @@ public sealed class WindowsPlatformNetworkDiagnosticsProvider : IPlatformNetwork
         return result;
     }
 
-    public IReadOnlyList<InterfaceRouteInfo> GetRoutes(NetworkInterface networkInterface)
+    private static IReadOnlyList<InterfaceRouteInfo> GetRoutesCore(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
     {
         var result = new List<InterfaceRouteInfo>();
 
         foreach (var interfaceIndex in GetInterfaceIndices(networkInterface))
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             using var searcher = new ManagementObjectSearcher(
                 new ManagementScope(@"\\.\ROOT\StandardCimv2"),
                 new ObjectQuery(
