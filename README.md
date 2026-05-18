@@ -4,11 +4,10 @@
 
 <br/>
 
-<img src="./assets/xidio_icon.svg" alt="xidio Logo" width="110">
+<img src="./assets/xidio_icon.svg" alt="xidio Logo" width="130"><br/>
 
 <img src="./assets/xidio_logo_bright.svg#gh-light-mode-only" alt="xidio Logo" width="150">
 <img src="./assets/xidio_logo_dark.svg#gh-dark-mode-only" alt="xidio Logo" width="150">
-
 <br/>
 
 _✨**Xidian Internet Diagnostic Intelligence Operator**✨_\
