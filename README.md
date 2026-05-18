@@ -1,15 +1,21 @@
 <!--markdownlint-disable MD033 MD036 MD041-->
 
-$$
-\LARGE \bold{\mathrm{xidio}}
-$$
-
 <div align="center">
 
-_✨**Xidian Internet Diagnostic Intelligence Operator**✨_\
-西电校园网诊断工具
+<br/>
 
-由 Project Hazelita 开发 · 以 MIT LICENSE 开源
+<img src="./assets/xidio_icon.svg" alt="xidio Logo" width="110">
+
+<img src="./assets/xidio_logo_bright.svg#gh-light-mode-only" alt="xidio Logo" width="150">
+<img src="./assets/xidio_logo_dark.svg#gh-dark-mode-only" alt="xidio Logo" width="150">
+
+<br/>
+
+_✨**Xidian Internet Diagnostic Intelligence Operator**✨_\
+**西电校园网诊断工具**
+
+由 Project Hazelita 开发 · 以 MIT License 开源 · [Marduk](https://github.com/NanCunChild/Marduk) 精神续作\
+**【✦ —— 拨开网络迷雾，触及以太真实 —— ✦】**
 
 </div>
 
