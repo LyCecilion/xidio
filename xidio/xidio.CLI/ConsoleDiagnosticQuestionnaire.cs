@@ -21,9 +21,20 @@ internal static class ConsoleDiagnosticQuestionnaire
             ]);
 
         cancellationToken.ThrowIfCancellationRequested();
+        var accessMethod = PromptChoice<NetworkAccessMethod>(
+            "你的设备当前使用哪种接入方式？",
+            [
+                new("Wi-Fi", NetworkAccessMethod.Wireless),
+                new("有线连接（不拨号，直接通过网线接入）", NetworkAccessMethod.Ethernet),
+                new("PPPoE / 宽带拨号", NetworkAccessMethod.Pppoe),
+                new("不确定", NetworkAccessMethod.Unknown)
+            ]);
+
+        cancellationToken.ThrowIfCancellationRequested();
         var problemSymptom = PromptChoice<ProblemSymptom>(
             "你现在遇到的主要问题是什么？",
             [
+                new("没有问题，只是进行一次诊断", ProblemSymptom.NoProblem),
                 new("连不上 Wi-Fi", ProblemSymptom.CannotConnectWifi),
                 new("连上了但显示无 Internet", ProblemSymptom.ConnectedNoInternet),
                 new("认证页不弹出", ProblemSymptom.CaptivePortalNotShown),
@@ -36,20 +47,23 @@ internal static class ConsoleDiagnosticQuestionnaire
             ]);
 
         cancellationToken.ThrowIfCancellationRequested();
-        var impactScope = PromptChoice<ImpactScope>(
-            "这个问题影响到哪些设备或区域？",
-            [
-                new("只有这台设备", ImpactScope.OnlyThisDevice),
-                new("同宿舍 / 同房间也有人遇到", ImpactScope.SameRoomOrDormitory),
-                new("同楼层 / 附近区域也有人遇到", ImpactScope.SameFloorOrArea),
-                new("更大范围都有人遇到", ImpactScope.WiderArea),
-                new("不清楚", ImpactScope.Unknown)
-            ]);
+        var impactScope = problemSymptom == ProblemSymptom.NoProblem
+            ? ImpactScope.Unknown
+            : PromptChoice<ImpactScope>(
+                "这个问题影响到哪些设备或区域？",
+                [
+                    new("只有这台设备", ImpactScope.OnlyThisDevice),
+                    new("同宿舍 / 同房间也有人遇到", ImpactScope.SameRoomOrDormitory),
+                    new("同楼层 / 附近区域也有人遇到", ImpactScope.SameFloorOrArea),
+                    new("更大范围都有人遇到", ImpactScope.WiderArea),
+                    new("不清楚", ImpactScope.Unknown)
+                ]);
 
         return Task.FromResult(new UserScenarioInfo
         {
             Location = location,
             ConnectionMethod = connectionMethod,
+            AccessMethod = accessMethod,
             ProblemSymptom = problemSymptom,
             ImpactScope = impactScope
         });

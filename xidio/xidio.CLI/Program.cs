@@ -44,7 +44,7 @@ internal static class Program
         CancellationToken cancellationToken)
     {
         return AnsiConsole.Progress()
-            .AutoClear(false)
+            .AutoClear(true)
             .Columns(
                 new TaskDescriptionColumn(),
                 new ProgressBarColumn(),
@@ -52,7 +52,7 @@ internal static class Program
                 new SpinnerColumn())
             .StartAsync(async context =>
             {
-                var task = context.AddTask("正在准备诊断环境", maxValue: 6);
+                var task = context.AddTask("正在准备诊断环境", maxValue: 10);
                 var progress = new InlineProgress<NetworkDiagnosticProgress>(state =>
                 {
                     task.Description = state.Message;

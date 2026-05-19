@@ -8,6 +8,11 @@ namespace xidio.Platform.macOS;
 
 public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiagnosticsProvider
 {
+    public ValueTask<OperatingSystemDiagnosticInfo?> GetOperatingSystemInfoAsync(CancellationToken cancellationToken)
+    {
+        return ValueTask.FromResult<OperatingSystemDiagnosticInfo?>(null);
+    }
+
     public async ValueTask<IReadOnlyCollection<string>> GetPhysicalNetworkInterfaceIdsAsync(CancellationToken cancellationToken)
     {
         var output = await RunCommandAsync("/usr/sbin/networksetup", "-listallhardwareports", cancellationToken);
@@ -55,6 +60,13 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
         }
 
         return result;
+    }
+
+    public ValueTask<InterfacePlatformInfo?> GetInterfacePlatformInfoAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
+    {
+        return ValueTask.FromResult<InterfacePlatformInfo?>(null);
     }
 
     public async ValueTask<WirelessConnectionInfo?> GetWirelessConnectionInfoAsync(
@@ -111,6 +123,13 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
         }
     }
 
+    public ValueTask<InterfaceDhcpInfo?> GetInterfaceDhcpInfoAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
+    {
+        return ValueTask.FromResult<InterfaceDhcpInfo?>(null);
+    }
+
     public async ValueTask<IReadOnlyList<InterfaceMetricInfo>> GetInterfaceMetricsAsync(
         NetworkInterface networkInterface,
         CancellationToken cancellationToken)
@@ -152,6 +171,18 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
         result.AddRange(await ParseNetstatRoutesAsync(interfaceId, "inet6", (int)AddressFamily.InterNetworkV6, cancellationToken));
 
         return result;
+    }
+
+    public ValueTask<IReadOnlyList<NetworkNeighborInfo>> GetNetworkNeighborsAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
+    {
+        return ValueTask.FromResult<IReadOnlyList<NetworkNeighborInfo>>(Array.Empty<NetworkNeighborInfo>());
+    }
+
+    public ValueTask<IReadOnlyList<DefaultRouteInfo>> GetDefaultRoutesAsync(CancellationToken cancellationToken)
+    {
+        return ValueTask.FromResult<IReadOnlyList<DefaultRouteInfo>>(Array.Empty<DefaultRouteInfo>());
     }
 
     private static async Task<List<InterfaceRouteInfo>> ParseNetstatRoutesAsync(

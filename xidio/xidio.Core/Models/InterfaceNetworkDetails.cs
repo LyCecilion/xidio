@@ -12,9 +12,13 @@ public sealed class InterfaceNetworkDetails
 
     public required IReadOnlyList<IPAddress> DhcpServers { get; init; }
 
+    public InterfaceDhcpInfo? DhcpInfo { get; init; }
+
     public required IReadOnlyList<IPAddress> DnsServers { get; init; }
 
     public required IReadOnlyList<InterfaceMetricInfo> InterfaceMetrics { get; init; }
 
     public required IReadOnlyList<InterfaceRouteInfo> Routes { get; init; }
+
+    public required IReadOnlyList<NetworkNeighborInfo> Neighbors { get; init; }
 }

@@ -3,6 +3,7 @@ namespace xidio.Core.Models;
 public enum ProblemSymptom
 {
     Unknown,
+    NoProblem,
     CannotConnectWifi,
     ConnectedNoInternet,
     CaptivePortalNotShown,
