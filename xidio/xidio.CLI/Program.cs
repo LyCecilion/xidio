@@ -46,10 +46,11 @@ internal static class Program
         return AnsiConsole.Progress()
             .AutoClear(true)
             .Columns(
-                new TaskDescriptionColumn(),
-                new ProgressBarColumn(),
+                new SpinnerColumn(),
                 new PercentageColumn(),
-                new SpinnerColumn())
+                new ProgressBarColumn(),
+                new TaskDescriptionColumn()
+                )
             .StartAsync(async context =>
             {
                 var task = context.AddTask("正在准备诊断环境", maxValue: 10);

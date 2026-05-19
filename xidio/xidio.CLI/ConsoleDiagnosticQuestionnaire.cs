@@ -12,21 +12,21 @@ internal static class ConsoleDiagnosticQuestionnaire
 
         cancellationToken.ThrowIfCancellationRequested();
         var connectionMethod = PromptChoice<ConnectionMethod>(
-            "你的设备现在是通过什么方式接入网络的？",
+            "你的设备是如何连接校园网的？",
             [
-                new("直接连接：校园 Wi-Fi / 宿舍有线 PPPoE", ConnectionMethod.DirectCampusNetwork),
-                new("间接连接：通过路由器等设备", ConnectionMethod.CampusNetworkViaRouter),
-                new("其他连接：手机热点 / 校外网络等", ConnectionMethod.OtherNetwork),
+                new("直接连接：连接到 stu-xdwlan 等校园网 Wi-Fi 节点，或使用有线直接连接墙口", ConnectionMethod.DirectCampusNetwork),
+                new("间接连接：通过连接到宿舍的路由器等方式，间接连接到校园网", ConnectionMethod.CampusNetworkViaRouter),
+                new("其他连接：使用移动数据的手机热点等，并没有直接连接到校园网", ConnectionMethod.OtherNetwork),
                 new("不确定", ConnectionMethod.Unknown)
             ]);
 
         cancellationToken.ThrowIfCancellationRequested();
         var accessMethod = PromptChoice<NetworkAccessMethod>(
-            "你的设备当前使用哪种接入方式？",
+            "你的设备当前使用了哪种接入方式？",
             [
-                new("Wi-Fi", NetworkAccessMethod.Wireless),
-                new("有线连接（不拨号，直接通过网线接入）", NetworkAccessMethod.Ethernet),
-                new("PPPoE / 宽带拨号", NetworkAccessMethod.Pppoe),
+                new("Wi-Fi 连接（连接到校园网 Wi-Fi 节点或路由器等）", NetworkAccessMethod.Wireless),
+                new("有线连接（未拨号，直接使用网线连接到路由器等）", NetworkAccessMethod.Ethernet),
+                new("PPPoE / 宽带拨号（连接到了墙口的网口）", NetworkAccessMethod.Pppoe),
                 new("不确定", NetworkAccessMethod.Unknown)
             ]);
 
@@ -34,14 +34,14 @@ internal static class ConsoleDiagnosticQuestionnaire
         var problemSymptom = PromptChoice<ProblemSymptom>(
             "你现在遇到的主要问题是什么？",
             [
-                new("没有问题，只是进行一次诊断", ProblemSymptom.NoProblem),
-                new("连不上 Wi-Fi", ProblemSymptom.CannotConnectWifi),
-                new("连上了但显示无 Internet", ProblemSymptom.ConnectedNoInternet),
-                new("认证页不弹出", ProblemSymptom.CaptivePortalNotShown),
-                new("认证成功但打不开网页", ProblemSymptom.PortalAuthenticatedNoWeb),
-                new("部分应用能用，部分应用不能用", ProblemSymptom.SomeApplicationsUnavailable),
-                new("有线拨号失败", ProblemSymptom.PppoeDialFailed),
-                new("有线拨号成功但没有网", ProblemSymptom.PppoeConnectedNoInternet),
+                new("没有显著问题，仅进行一次诊断", ProblemSymptom.NoProblem),
+                new("无法连接 Wi-Fi", ProblemSymptom.CannotConnectWifi),
+                new("Wi-Fi 连接成功，但提示无 Internet", ProblemSymptom.ConnectedNoInternet),
+                new("未弹出校园网认证页", ProblemSymptom.CaptivePortalNotShown),
+                new("已认证，但仍无法上网", ProblemSymptom.PortalAuthenticatedNoWeb),
+                new("可上网，但部分应用可上网，部分应用无法上网", ProblemSymptom.SomeApplicationsUnavailable),
+                new("拨号失败", ProblemSymptom.PppoeDialFailed),
+                new("拨号成功，但无法上网", ProblemSymptom.PppoeConnectedNoInternet),
                 new("其他问题", ProblemSymptom.Other),
                 new("不确定", ProblemSymptom.Unknown)
             ]);
@@ -50,9 +50,9 @@ internal static class ConsoleDiagnosticQuestionnaire
         var impactScope = problemSymptom == ProblemSymptom.NoProblem
             ? ImpactScope.Unknown
             : PromptChoice<ImpactScope>(
-                "这个问题影响到哪些设备或区域？",
+                "是否有其他设备或用户也有此问题？",
                 [
-                    new("只有这台设备", ImpactScope.OnlyThisDevice),
+                    new("只有这台设备有该问题", ImpactScope.OnlyThisDevice),
                     new("同宿舍 / 同房间也有人遇到", ImpactScope.SameRoomOrDormitory),
                     new("同楼层 / 附近区域也有人遇到", ImpactScope.SameFloorOrArea),
                     new("更大范围都有人遇到", ImpactScope.WiderArea),
@@ -72,7 +72,7 @@ internal static class ConsoleDiagnosticQuestionnaire
     private static string PromptLocation(CancellationToken cancellationToken)
     {
         var location = AnsiConsole.Prompt(new SelectionPrompt<string>()
-            .Title("你的设备目前位于哪里？通常情况下，同一设备在不同位置的表现也会有差异。")
+            .Title("你的设备目前位于哪里？")
             .PageSize(12)
             .AddChoices(
                 "海棠公寓",
@@ -99,10 +99,10 @@ internal static class ConsoleDiagnosticQuestionnaire
 
     private static string PromptDormitoryBuilding(string dormitory)
     {
-        var buildingNumber = AnsiConsole.Prompt(new TextPrompt<int>($"{dormitory}几号楼？")
+        var buildingNumber = AnsiConsole.Prompt(new TextPrompt<int>($"请输入所在{dormitory}的楼栋数（一个正整数）：")
             .Validate(number => number > 0
                 ? ValidationResult.Success()
-                : ValidationResult.Error("请输入正整数。")));
+                : ValidationResult.Error("请输入一个正整数")));
 
         return $"{dormitory} {buildingNumber} 号楼";
     }

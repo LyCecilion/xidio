@@ -23,29 +23,8 @@ internal static class ConsoleDiagnosticReporter
 
     public static void PrintBanner()
     {
-        var appName = new FigletText("XIDIO")
-        {
-            Color = Color.Purple3,
-            Justification = Justify.Center
-        };
-
-        var version = new Text("v0.1.0", new Style(Color.Purple3))
-        {
-            Justification = Justify.Center
-        };
-
-        AnsiConsole.Write(appName);
-        AnsiConsole.Write(version);
-        AnsiConsole.WriteLine();
-        AnsiConsole.Write(new Text("Xidian Internet Diagnostic Intelligence Operator / 西电校园网诊断工具")
-        {
-            Justification = Justify.Center
-        });
-        AnsiConsole.Write(new Text("由 Project Hazelita 开发 / 以 MIT License 开源")
-        {
-            Justification = Justify.Center
-        });
-        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[purple]Welcome to xidio.CLI v0.1.0, Xidian Internet Diagnostic Intelligence Operator.[/]");
+        AnsiConsole.MarkupLine("[purple]This project is developed by Project Hazelita, and uses the MIT license.[/]");
         AnsiConsole.WriteLine();
     }
 
@@ -54,13 +33,13 @@ internal static class ConsoleDiagnosticReporter
         PrintSection("报告概要");
 
         var summaryTable = CreateKeyValueTable();
-        summaryTable.AddRow("生成时间", Escape($"{report.CollectedAt:yyyy-MM-dd HH:mm:ss}"));
-        summaryTable.AddRow("Unix 时间戳", report.CollectedAt.ToUnixTimeSeconds().ToString());
-        summaryTable.AddRow("Hostname", Escape(report.HostName));
-        summaryTable.AddRow("System Proxy", FormatProxyStatus(report.SystemProxy));
+        summaryTable.AddRow("报告生成时间", Escape($"{report.CollectedAt:yyyy-MM-dd HH:mm:ss}"));
+        summaryTable.AddRow("报告生成 Unix 时间戳", report.CollectedAt.ToUnixTimeSeconds().ToString());
+        summaryTable.AddRow("主机名", Escape(report.HostName));
+        summaryTable.AddRow("系统代理", FormatProxyStatus(report.SystemProxy));
         summaryTable.AddRow("网络接口总数", report.TotalNetworkInterfaceCount.ToString());
-        summaryTable.AddRow("主要网络接口", report.PrimaryInterfaces.Count.ToString());
-        summaryTable.AddRow("物理适配器", report.NetworkAdapterDriverInfos.Count.ToString());
+        summaryTable.AddRow("主要网络接口个数", report.PrimaryInterfaces.Count.ToString());
+        summaryTable.AddRow("物理适配器个数", report.NetworkAdapterDriverInfos.Count.ToString());
 
         AnsiConsole.Write(summaryTable);
     }
@@ -70,12 +49,12 @@ internal static class ConsoleDiagnosticReporter
         PrintSection("系统信息");
 
         var systemTable = CreateKeyValueTable();
-        systemTable.AddRow("OS", Escape(operatingSystem.Family));
+        systemTable.AddRow("操作系统 / OS", Escape(operatingSystem.Family));
         systemTable.AddRow("描述", Escape(operatingSystem.Description));
         systemTable.AddRow("版本", Escape(operatingSystem.Version));
         systemTable.AddRow("架构", Escape(operatingSystem.Architecture));
         systemTable.AddRow("xidio 版本", Escape(operatingSystem.XidioVersion));
-        systemTable.AddRow("管理员/root", FormatNullableBool(operatingSystem.IsElevated));
+        systemTable.AddRow("是否提升权限", FormatNullableBool(operatingSystem.IsElevated));
 
         AnsiConsole.Write(systemTable);
     }
