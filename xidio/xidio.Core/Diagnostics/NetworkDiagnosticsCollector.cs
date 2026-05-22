@@ -20,19 +20,19 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
     [
         new()
         {
-            Name = "西电认证服务器域名",
+            Name = "西电校园网认证服务器域名",
             Host = "w.xidian.edu.cn",
             IsCampusTarget = true
         },
         new()
         {
-            Name = "西电认证服务器 IP",
+            Name = "西电校园网认证服务器 IP",
             Host = "10.255.44.33",
             IsCampusTarget = true
         },
         new()
         {
-            Name = "xidio 外部探测目标",
+            Name = "镜雨亭CrystaRin",
             Host = "crystal.stellalyr.ink",
             IsCampusTarget = false
         }
@@ -44,7 +44,7 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
         return Collect(UserScenarioInfo.Unspecified);
     }
 
-    public NetworkDiagnosticReport Collect(UserScenarioInfo userScenario)
+    private NetworkDiagnosticReport Collect(UserScenarioInfo userScenario)
     {
         return CollectAsync(userScenario).GetAwaiter().GetResult();
     }
@@ -76,13 +76,13 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
 
         var physicalInterfaceIds = await SafeGetAsync(
             ct => _platformDiagnostics.GetPhysicalNetworkInterfaceIdsAsync(ct),
-            Array.Empty<string>(),
+            [],
             cancellationToken);
         ReportProgress(progress, NetworkDiagnosticStage.PhysicalAdapters, "已识别物理网络适配器", 4);
 
         var adapterDriverInfos = await SafeGetAsync(
             ct => _platformDiagnostics.GetNetworkAdapterDriverInfosAsync(ct),
-            Array.Empty<NetworkAdapterDriverInfo>(),
+            [],
             cancellationToken);
         ReportProgress(progress, NetworkDiagnosticStage.DriverInfo, "已读取网卡驱动信息", 5);
 
@@ -301,7 +301,7 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
         CancellationToken cancellationToken)
     {
         if (IPAddress.TryParse(host, out _) || dnsServers.Count == 0)
-            return Array.Empty<DnsProbeResult>();
+            return [];
 
         var results = new List<DnsProbeResult>();
 
@@ -818,7 +818,7 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
         var targetUri = new Uri("https://xidio.stellalyr.ink");
         using var handler = new HttpClientHandler();
         var defaultProxy = handler.Proxy ?? WebRequest.GetSystemWebProxy();
-        var proxyUri = defaultProxy?.GetProxy(targetUri);
+        var proxyUri = defaultProxy.GetProxy(targetUri);
         var isEnabled = proxyUri is not null && proxyUri != targetUri;
 
         return new SystemProxyInfo

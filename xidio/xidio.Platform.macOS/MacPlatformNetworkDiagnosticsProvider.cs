@@ -358,17 +358,15 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
         string arguments,
         CancellationToken cancellationToken)
     {
-        using var process = new Process
+        using var process = new Process();
+        process.StartInfo = new ProcessStartInfo
         {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = command,
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            }
+            FileName = command,
+            Arguments = arguments,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
         };
 
         try
@@ -394,6 +392,7 @@ public sealed class MacPlatformNetworkDiagnosticsProvider : IPlatformNetworkDiag
             }
             catch
             {
+                // ignored
             }
 
             throw;

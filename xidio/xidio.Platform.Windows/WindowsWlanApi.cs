@@ -47,7 +47,7 @@ internal static class WindowsWlanApi
                 var ssid = DecodeSsid(attributes.AssociationAttributes.Dot11Ssid);
                 var bssid = FormatMacAddress(attributes.AssociationAttributes.Dot11Bssid);
                 var bssDetails = SafeGet(() => GetCurrentBssDetails(clientHandle, interfaceGuid, bssid));
-                var visibleNetworks = SafeGet<IReadOnlyList<VisibleWirelessNetworkInfo>>(
+                var visibleNetworks = SafeGet(
                     () => GetAvailableNetworks(clientHandle, interfaceGuid)) ?? [];
 
                 return new WirelessConnectionInfo

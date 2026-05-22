@@ -294,8 +294,7 @@ internal static class ConsoleDiagnosticReporter
             detailsTable.AddRow("认证/加密", Escape(FormatWirelessSecurity(primaryInterface.WirelessConnection)));
             detailsTable.AddRow("当前速率", Escape(FormatWirelessRates(primaryInterface.WirelessConnection)));
         }
-        else if (primaryInterface.Kind == PrimaryInterfaceKind.Wireless &&
-                 primaryInterface.NetworkDetails is not null)
+        else if (primaryInterface is { Kind: PrimaryInterfaceKind.Wireless, NetworkDetails: not null })
         {
             detailsTable.AddRow("无线连接", "[yellow]未获取到 SSID/BSSID[/]");
         }
