@@ -5,13 +5,35 @@ namespace xidio.Core.Abstractions;
 
 public interface IPlatformNetworkDiagnosticsProvider
 {
-    IReadOnlyCollection<string> GetPhysicalNetworkInterfaceIds();
+    ValueTask<OperatingSystemDiagnosticInfo?> GetOperatingSystemInfoAsync(CancellationToken cancellationToken);
 
-    IReadOnlyList<NetworkAdapterDriverInfo> GetNetworkAdapterDriverInfos();
+    ValueTask<IReadOnlyCollection<string>> GetPhysicalNetworkInterfaceIdsAsync(CancellationToken cancellationToken);
 
-    WirelessConnectionInfo? GetWirelessConnectionInfo(NetworkInterface networkInterface);
+    ValueTask<IReadOnlyList<NetworkAdapterDriverInfo>> GetNetworkAdapterDriverInfosAsync(CancellationToken cancellationToken);
 
-    IReadOnlyList<InterfaceMetricInfo> GetInterfaceMetrics(NetworkInterface networkInterface);
+    ValueTask<InterfacePlatformInfo?> GetInterfacePlatformInfoAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken);
 
-    IReadOnlyList<InterfaceRouteInfo> GetRoutes(NetworkInterface networkInterface);
+    ValueTask<WirelessConnectionInfo?> GetWirelessConnectionInfoAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken);
+
+    ValueTask<InterfaceDhcpInfo?> GetInterfaceDhcpInfoAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken);
+
+    ValueTask<IReadOnlyList<InterfaceMetricInfo>> GetInterfaceMetricsAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken);
+
+    ValueTask<IReadOnlyList<InterfaceRouteInfo>> GetRoutesAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken);
+
+    ValueTask<IReadOnlyList<NetworkNeighborInfo>> GetNetworkNeighborsAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken);
+
+    ValueTask<IReadOnlyList<DefaultRouteInfo>> GetDefaultRoutesAsync(CancellationToken cancellationToken);
 }

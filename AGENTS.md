@@ -1,54 +1,146 @@
-# AGENTS
+# xidio Agents Instructions
 
-## 项目简介
-- 本项目 `xidio` 是一个面向西安电子科技大学（西电）校园网场景的网络诊断辅助工具。
-- 当前核心目标是采集网络环境信息，帮助定位“无法上网 / 网络异常 / 路由或代理配置异常”等问题。
-- 现阶段以 **Windows 端诊断** 为主，CLI 输出供人工排障使用。
+xidio（XiDian Internet Diagnostic Intelligence Operator）是一款跨平台的校园网诊断工具，由 Project Hazelita 基于 C# 和 .NET 开发，专门针对西安电子科技大学的网络环境。
 
-## 代码结构
-- `xidio/xidio.Core`：平台无关核心层。
-- `xidio/xidio.Platform.Windows`：Windows 平台实现（WMI + WLAN API）。
-- `xidio/xidio.Platform.macOS`：macOS 平台实现（system_profiler + networksetup + netstat + airport）。
-- `xidio/xidio.CLI`：命令行入口与诊断报告输出（多平台构建：`net10.0-windows` / `net10.0`）。
-- `xidio/xidio.slnx`：解决方案入口。
+在为 xidio 贡献代码前，请先阅读 `README.md` 了解项目最新情况，并仔细阅读本文件、遵循下面的指引。请确保你的修改是**最小化**的，并且与项目的现有内容保持一致、互不冲突。
 
-## 技术栈
-- 语言：`C#`
-- SDK / 框架：`.NET 10`（`net10.0` / `net10.0-windows`）
-- 平台能力：
-  - `System.Net.NetworkInformation`（网卡、IP、网关、DNS）
-  - `System.Management`（WMI 查询驱动版本、路由、接口指标）
-  - `wlanapi.dll` P/Invoke（SSID/BSSID 无线连接信息）
-- 产物形态：CLI 可执行程序（启用 AOT 发布配置）
+## 各部分功能
 
-## 当前实现重点
-- `NetworkDiagnosticsCollector` 负责聚合诊断数据并生成 `NetworkDiagnosticReport`。
-- 通过 `IPlatformNetworkDiagnosticsProvider` 抽象平台差异；Windows 端由 `WindowsPlatformNetworkDiagnosticsProvider` 实现。
-- 已包含虚拟网卡过滤逻辑（如 Hyper-V、VMware、WSL、WireGuard、Npcap 等关键字）。
-- 输出包含：
-  - 主网卡识别（有线 / 无线 / PPPoE）
-  - IP、网关、DHCP、DNS、路由与接口 Metric
-  - 网卡驱动版本
-  - 系统代理状态
+`xidio.Core` 主要负责诊断、修复和上报。
 
-## 开发注意事项（给后续 AI Agents）
-- 保持分层边界：
-  - `xidio.Core` 不应依赖 Windows 专有 API。
-  - 平台相关实现放在 `xidio.Platform.*`。
-- 新增平台能力时，优先扩展 `IPlatformNetworkDiagnosticsProvider`，不要把平台分支直接写进 CLI。
-- 维持“诊断优先、不中断”原则：
-  - 采集失败时优先降级返回，不要因单点异常导致整体退出。
-  - 参考现有 `SafeGet` 和 provider 内部异常兜底模式。
-- 变更虚拟网卡过滤规则时，注意误杀真实网卡风险；需结合中英文设备名与常见驱动关键词。
-- CLI 文案可调整，但尽量保持关键信息字段稳定，避免影响后续日志解析或人工比对。
-- 当前仓库暂无测试项目；若引入复杂逻辑（分类、过滤、路由排序），建议补充单元测试。
+### 诊断 / Diagnostics
 
-## 常用命令
-- 还原依赖：`dotnet restore xidio/xidio.slnx`
-- 构建：`dotnet build xidio/xidio.slnx -c Release`
-- 运行 CLI：`dotnet run --project xidio/xidio.CLI/xidio.CLI.csproj`
-- 发布（示例）：`dotnet publish xidio/xidio.CLI/xidio.CLI.csproj -c Release`
+xidio 需要诊断用户设备，确定网络问题的根源。诊断过程分为**信息收集**和**分析**两步。
 
-## 现状与后续
-- `xidio.Core/Repairs` 与 `xidio.Core/Reporting` 目录已预留，尚未落地代码。
-- 后续可在“诊断结论 + 自动修复建议”方向扩展，但应先保证采集结果稳定、可复现。
+#### 收集信息
+
+xidio 将从用户及其设备上收集必要信息。以下列出部分需要采集的信息类别。
+
+##### 用户场景信息
+
+xidio 会主动询问：
+
+1. 用户所在位置。
+2. 当前连接方式。连接方式划分为：
+   - **直接连接**：用户直接通过 Wi-Fi 连接校内任意 AP，或通过网口以 PPPoE 方式连接。
+   - **间接连接**：用户通过路由器等方式接入，数据经校园网设施传输。
+   - **其他连接**：用户通过手机热点等方式连接，数据未经过校园网设施。
+3. 遇到的问题。例如：无法连接 Wi-Fi；已连接但显示“无 Internet”；未跳转到 Portal；Portal 认证成功但无法打开网页；部分应用不能使用；拨号失败；拨号成功但无 Internet 等。
+4. 问题波及范围。例如：仅本机有问题；同宿舍其他人也有问题；同楼层其他人也有问题；不清楚。
+
+这些信息有助于网管会判断是否为区域性问题。
+
+##### 系统与网卡基础信息
+
+xidio 需要收集：
+
+1. 操作系统信息：操作系统类型（Windows、Linux 或 macOS）、版本号；xidio 版本号；xidio 是否以管理员/root 权限运行。
+2. 时间：本机时间、某 NTP 服务器时间，以及两者的差值。
+3. 网络接口：所有网络接口及主网络接口（物理接口）的接口名称、类型、是否启用、是否已连接、（若有）MAC 地址、链路速度、MTU、接口 metric 等，以及当前默认路由所使用的具体网卡。
+
+如果用户使用 Wi-Fi 连接，还需收集：当前 Wi-Fi 的 SSID、BSSID、RSSI、频段、信道、PHY 类型、认证/加密类型、连接时长、当前连接速率，以及可见的 SSID 列表。
+
+如果用户使用 PPPoE 连接，还需收集：网线是否插好；对端是否有链路；链路速度；是否存在 PPPoE/宽带连接，若存在，则获取 PPPoE 的当前状态、分配到的 IP、DNS、默认路由。在可行的情况下，可尝试进行一次 RAS 拨号并记录 RAS 错误码；（在 Windows 上）还要检查宽带连接名称是否含有非 ASCII 字符，以及用户是否安装了 Npcap 或 WinPcap。
+
+##### IP、DHCP、DNS、路由、ARP 信息
+
+如果用户已连接到至少一个网络，xidio 将收集：IPv4 地址、IPv6 地址、子网掩码/前缀长度、是否通过 DHCP 获取地址（若是，则收集 DHCP 服务器地址、租约开始和过期时间）、默认网关、DNS 服务器、路由表、ARP/IPv6 Neighbor 表。
+
+##### 本机因素
+
+在征得用户同意后，xidio 可以进一步收集：
+
+1. 系统代理设置：包括 Windows Internet Options 代理、WinHTTP 代理、系统代理、环境变量 `HTTP_PROXY`/`HTTPS_PROXY`、macOS 网络代理等。
+2. VPN/TUN/TAP 相关状态：如 Clash TUN、v2rayN、WireGuard、OpenVPN、ZeroTier、Tailscale、WARP、VMware/VirtualBox 虚拟网卡、WSL 虚拟网卡等。
+3. DNS-over-HTTPS 与 Secure DNS 状态。
+4. hosts 文件内容。
+5. 防火墙状态。
+6. 安全软件及过滤型驱动。
+7. 浏览器代理设置。
+
+##### 认证与业务状态
+
+在征得用户同意后，xidio 可检查：认证服务器是否可达；当前用户是否已通过校园网认证；当前账号是否在线；当前设备是否出现在在线列表中；套餐是否生效；用户所属运营商/套餐类型；宽带优先级；是否欠费；是否达到设备数量上限。
+
+##### 主动探测信息
+
+我们选定以下目标进行主动探测：
+
+1. 校园内目标：认证服务器域名和 IP、校内若干服务的 HTTP/HTTPS 域名。
+2. 校园外目标：xidio 官方域名、HTTP 204 端点、HTTPS 固定响应体端点、TCP Echo 或 Connect 端点、UDP Echo/Jitter 端点。
+
+执行探测或收集：ARP 默认网关信息；ICMP Ping 情况；到 80、443、53（TCP）的 TCP Connect 情况；UDP DNS 查询；UDP Echo/Jitter/丢包测试；HTTP GET 情况；HTTPS 握手与证书校验；DNS 解析情况（包括使用系统解析器和直接向当前 DNS 服务器查询，分别测试 A 和 AAAA 记录）。更进一步，还可进行 Traceroute/MTR、MTU/PMTUD 测试。
+
+#### 分析
+
+我们按以下顺序逐层排查问题。每次检测需覆盖所有层，且每层不能仅返回“是/否”，必须附带完整的探测信息。
+
+```text
+本机网卡 -> 有线/Wi-Fi 情况 -> IP 获取 -> 默认网关可达 -> 认证服务可达 -> 认证服务正常 -> DNS 正常 -> 探测目标可达 -> 具体协议
+```
+
+下面给出典型的判断流程，xidio 默认按照该顺序排查，后续也支持用户自定义判断规则。
+
+##### Wi-Fi 场景
+
+###### 无法连接 Wi-Fi
+
+适用于设备附近扫不到校园 SSID、信号极弱，或认证失败的情形。SSID 不可见可能是 AP 覆盖不足或无线网卡问题；SSID 可见且信号不弱但无法连接，可能是配置文件损坏、认证方式错误或 AP 故障。xidio 可建议用户忘记网络后重新连接、移动到 AP 附近等。
+
+###### Wi-Fi 连接成功但未获取到 IP
+
+适用于已关联 SSID/BSSID，但 IPv4 地址为 `169.254.x.x` 或为空，DHCP 服务器为空或请求超时等情形。若连接其他 SSID 也失败，则可能是本机 DHCP 服务、防火墙或驱动问题；若同一 AP 下仅个别用户失败，可能是本机网络栈或网卡驱动问题；若多个用户同时失败，则可能是 AP/接入交换机/VLAN/DHCP 中继问题。
+
+###### 获取到 IP 但没有默认网关
+
+适用于 DHCP 成功分配 IP，但默认网关为空，或路由表中无 `0.0.0.0/0` 的情形。可能由 DHCP 配置异常，或用户自行配置了错误的网络参数导致。
+
+###### 有默认网关但不可达
+
+适用于有默认网关，但 ARP 表中无对应 MAC 地址，且 Ping/TCP 探测网关失败、校园认证 IP 也不可达等情况。可能是 AP/交换机/网关/VLAN 异常。
+
+###### 网关可达但认证页面打不开
+
+如果解析 Portal 域名失败但 IP 可达，则可能是 DNS 故障，此时可检查 DNS 和 DoH/公共 DNS 状况。
+
+如果 Portal 的域名和 IP 均不可达，可能是校内认证服务存在故障。
+
+###### 认证成功但无法上网
+
+按层次分析：如果能访问公网 IP 但无法解析域名，则问题可能在 DNS。若 DNS 正常但 TCP 80/443 不通，可能是出口路由、防火墙、代理或 VPN 问题。若 TCP 80/443 正常但浏览器无法打开网页，可能是系统代理、浏览器代理、证书、系统时间或插件问题。若 TCP 正常但 UDP 丢包严重，可能与 UDP/QoS/运营商出口/CDN/上游拥塞有关。若 IPv4 正常但 IPv6 异常（或反之），则可能是双栈配置问题，浏览器 Happy Eyeballs 机制或地址优先级导致体验异常。
+
+##### PPPoE 场景
+
+###### 以太网无链路
+
+适用于以太网未连接、无 carrier 或链路速度为 0 的情形。通常由网线未连接或连接错误导致。
+
+###### 有链路但未拨号
+
+适用于以太网处于 `up` 状态，但没有 PPP 接口和 PPPoE 默认路由的情形，一般是因为尚未拨号。
+
+###### PPPoE 拨号失败
+
+若有拨号错误码，可对照错误码进行诊断。如果接口有链路但 PPPoE Discovery 无任何响应，则优先考虑接入侧问题。
+
+###### PPPoE 拨号成功但无法联网
+
+需检查 PPP 接口是否获取到 IP、DNS，默认路由是否经过 PPP 接口，以及是否开启了系统代理等。
+
+##### 其他连接场景
+
+对于其他连接方式，xidio 不提供专门的分析帮助，因为这些情况通常与校园网无关。
+
+#### 其他问题
+
+##### Captive Portal Detection 失效
+
+若未自动弹出认证页面，但可手动访问 Portal，则只是 Captive Portal 探测机制失效；若域名访问失败而 IP 访问成功，则为 DNS 问题；若两者均失败，则通常是认证服务器路径或网关问题。
+
+##### Windows 侧的“无 Internet”连接
+
+Windows 显示的“无 Internet”主要依赖 NCSI 探测结果。xidio 不应仅以此为依据，应手动测试默认网关、Portal、DNS、HTTP 204、HTTPS 以及主动探测目标等情况，以判断是否真正无 Internet 连接。
+
+##### 仅部分应用无法访问互联网
+
+适用于能上 QQ 但不能打开网页等场景。此类问题成因复杂，xidio 可进行基本探测，如基础 HTTP/HTTPS 连通性、DNS 解析、TCP 443、UDP 443/QUIC 等。
