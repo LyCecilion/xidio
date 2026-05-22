@@ -39,14 +39,10 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
     ];
     private readonly IPlatformNetworkDiagnosticsProvider _platformDiagnostics = platformDiagnostics ?? NoopPlatformNetworkDiagnosticsProvider.Instance;
 
+    [Obsolete("Use CollectAsync instead. Synchronous network diagnostics block a long-running operation and may deadlock in context-bound callers.")]
     public NetworkDiagnosticReport Collect()
     {
-        return Collect(UserScenarioInfo.Unspecified);
-    }
-
-    private NetworkDiagnosticReport Collect(UserScenarioInfo userScenario)
-    {
-        return CollectAsync(userScenario).GetAwaiter().GetResult();
+        return Task.Run(() => CollectAsync(UserScenarioInfo.Unspecified)).Result;
     }
 
     public Task<NetworkDiagnosticReport> CollectAsync(
