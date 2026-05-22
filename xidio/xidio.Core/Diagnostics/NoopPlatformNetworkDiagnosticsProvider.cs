@@ -12,28 +12,65 @@ public sealed class NoopPlatformNetworkDiagnosticsProvider : IPlatformNetworkDia
     {
     }
 
-    public IReadOnlyCollection<string> GetPhysicalNetworkInterfaceIds()
+    public ValueTask<OperatingSystemDiagnosticInfo?> GetOperatingSystemInfoAsync(CancellationToken cancellationToken)
     {
-        return Array.Empty<string>();
+        return ValueTask.FromResult<OperatingSystemDiagnosticInfo?>(null);
     }
 
-    public IReadOnlyList<NetworkAdapterDriverInfo> GetNetworkAdapterDriverInfos()
+    public ValueTask<IReadOnlyCollection<string>> GetPhysicalNetworkInterfaceIdsAsync(CancellationToken cancellationToken)
     {
-        return Array.Empty<NetworkAdapterDriverInfo>();
+        return ValueTask.FromResult<IReadOnlyCollection<string>>(Array.Empty<string>());
     }
 
-    public WirelessConnectionInfo? GetWirelessConnectionInfo(NetworkInterface networkInterface)
+    public ValueTask<IReadOnlyList<NetworkAdapterDriverInfo>> GetNetworkAdapterDriverInfosAsync(CancellationToken cancellationToken)
     {
-        return null;
+        return ValueTask.FromResult<IReadOnlyList<NetworkAdapterDriverInfo>>(Array.Empty<NetworkAdapterDriverInfo>());
     }
 
-    public IReadOnlyList<InterfaceMetricInfo> GetInterfaceMetrics(NetworkInterface networkInterface)
+    public ValueTask<InterfacePlatformInfo?> GetInterfacePlatformInfoAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
     {
-        return Array.Empty<InterfaceMetricInfo>();
+        return ValueTask.FromResult<InterfacePlatformInfo?>(null);
     }
 
-    public IReadOnlyList<InterfaceRouteInfo> GetRoutes(NetworkInterface networkInterface)
+    public ValueTask<WirelessConnectionInfo?> GetWirelessConnectionInfoAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
     {
-        return Array.Empty<InterfaceRouteInfo>();
+        return ValueTask.FromResult<WirelessConnectionInfo?>(null);
+    }
+
+    public ValueTask<InterfaceDhcpInfo?> GetInterfaceDhcpInfoAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
+    {
+        return ValueTask.FromResult<InterfaceDhcpInfo?>(null);
+    }
+
+    public ValueTask<IReadOnlyList<InterfaceMetricInfo>> GetInterfaceMetricsAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
+    {
+        return ValueTask.FromResult<IReadOnlyList<InterfaceMetricInfo>>(Array.Empty<InterfaceMetricInfo>());
+    }
+
+    public ValueTask<IReadOnlyList<InterfaceRouteInfo>> GetRoutesAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
+    {
+        return ValueTask.FromResult<IReadOnlyList<InterfaceRouteInfo>>(Array.Empty<InterfaceRouteInfo>());
+    }
+
+    public ValueTask<IReadOnlyList<NetworkNeighborInfo>> GetNetworkNeighborsAsync(
+        NetworkInterface networkInterface,
+        CancellationToken cancellationToken)
+    {
+        return ValueTask.FromResult<IReadOnlyList<NetworkNeighborInfo>>(Array.Empty<NetworkNeighborInfo>());
+    }
+
+    public ValueTask<IReadOnlyList<DefaultRouteInfo>> GetDefaultRoutesAsync(CancellationToken cancellationToken)
+    {
+        return ValueTask.FromResult<IReadOnlyList<DefaultRouteInfo>>(Array.Empty<DefaultRouteInfo>());
     }
 }
