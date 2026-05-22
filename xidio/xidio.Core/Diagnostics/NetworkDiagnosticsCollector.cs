@@ -1,9 +1,9 @@
 using System.Net;
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Globalization;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using xidio.Core.Abstractions;
@@ -134,7 +134,7 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
             Description = RuntimeInformation.OSDescription,
             Version = RuntimeInformation.OSDescription,
             Architecture = RuntimeInformation.ProcessArchitecture.ToString(),
-            XidioVersion = GetXidioVersion(),
+            XidioVersion = XidioVersion.InformationalVersion,
             IsElevated = null
         };
     }
@@ -170,7 +170,7 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
         }
     }
 
-    private async Task<IReadOnlyList<TargetProbeResult>> CollectProbeResultsAsync(
+    private static async Task<IReadOnlyList<TargetProbeResult>> CollectProbeResultsAsync(
         IReadOnlyList<PrimaryInterfaceInfo> primaryInterfaces,
         IProgress<NetworkDiagnosticProgress>? progress,
         CancellationToken cancellationToken)
@@ -774,7 +774,7 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
         return response.Length;
     }
 
-    private static IReadOnlyList<InterfaceIpAddressInfo> GetUnicastAddresses(
+    private static List<InterfaceIpAddressInfo> GetUnicastAddresses(
         IPInterfaceProperties properties,
         AddressFamily addressFamily)
     {
@@ -844,7 +844,7 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
 
         return bytes.Length == 0
             ? null
-            : string.Join(":", bytes.Select(static b => b.ToString("X2")));
+            : string.Join(":", bytes.Select(static b => b.ToString("X2", CultureInfo.InvariantCulture)));
     }
 
     private static string GetOperatingSystemFamily()
@@ -859,20 +859,12 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
         return "Unknown";
     }
 
-    private static string GetXidioVersion()
-    {
-        var version = Assembly.GetEntryAssembly()?.GetName().Version
-            ?? typeof(NetworkDiagnosticsCollector).Assembly.GetName().Version;
-
-        return version?.ToString() ?? "0.1.0";
-    }
-
     private static bool LooksLikeBluetooth(string name, string descriptionOrPnpId)
     {
         var text = $"{name} {descriptionOrPnpId}".ToLowerInvariant();
         return text.Contains("bluetooth")
             || text.Contains("蓝牙")
-            || text.StartsWith("bth\\");
+            || text.StartsWith("bth\\", StringComparison.Ordinal);
     }
 
     private static readonly string[] VirtualAdapterKeywords =

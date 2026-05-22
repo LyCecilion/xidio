@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Globalization;
 using xidio.Core.Models;
 
 namespace xidio.Platform.Windows;
@@ -73,7 +74,7 @@ internal static class WindowsWlanApi
         }
         finally
         {
-            WlanCloseHandle(clientHandle, IntPtr.Zero);
+            _ = WlanCloseHandle(clientHandle, IntPtr.Zero);
         }
     }
 
@@ -202,7 +203,7 @@ internal static class WindowsWlanApi
         if (macAddress.Length == 0)
             return "<unknown>";
 
-        return string.Join(":", macAddress.Select(static b => b.ToString("X2")));
+        return string.Join(":", macAddress.Select(static b => b.ToString("X2", CultureInfo.InvariantCulture)));
     }
 
     private static int EstimateRssi(uint signalQuality)
@@ -372,7 +373,6 @@ internal static class WindowsWlanApi
     private enum Dot11PhyType
     {
         Unknown = 0,
-        Any = 0,
         Fhss = 1,
         Dsss = 2,
         IrBaseband = 3,
@@ -411,7 +411,6 @@ internal static class WindowsWlanApi
         Ccmp = 0x04,
         Wep104 = 0x05,
         WpaUseGroup = 0x100,
-        RsnUseGroup = 0x100,
         Wep = 0x101,
         Gcmp = 0x08,
         Gcmp256 = 0x09,

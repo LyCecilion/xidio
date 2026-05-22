@@ -1,4 +1,5 @@
 using Spectre.Console;
+using System.Diagnostics.CodeAnalysis;
 using xidio.Core.Abstractions;
 using xidio.Core.Diagnostics;
 using xidio.Core.Models;
@@ -65,6 +66,10 @@ internal static class Program
             });
     }
 
+    [SuppressMessage(
+        "Performance",
+        "CA1859:Use concrete types when possible for improved performance",
+        Justification = "The CLI keeps provider creation behind the cross-platform abstraction.")]
     private static IPlatformNetworkDiagnosticsProvider CreatePlatformProvider()
     {
 #if WINDOWS

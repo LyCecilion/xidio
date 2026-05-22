@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore xidio/xidio.CLI/xidio.CLI.csproj
+
+      - name: Publish Windows x64
+        run: >
+          dotnet publish xidio/xidio.CLI/xidio.CLI.csproj
+          -c Release
+          -f net10.0-windows
+          -r win-x64
+          --self-contained true
+          -o artifacts/xidio-win-x64
+
+      - name: Package Windows x64
+        shell: pwsh
+        run: Compress-Archive -Path artifacts/xidio-win-x64/* -DestinationPath artifacts/xidio-win-x64.zip
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xidio-win-x64
+          path: artifacts/xidio-win-x64.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/xidio-win-x64.zip
+          generate_release_notes: true

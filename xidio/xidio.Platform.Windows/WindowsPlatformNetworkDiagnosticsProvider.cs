@@ -1,8 +1,10 @@
 using System.Management;
+using System.Globalization;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using xidio.Core.Abstractions;
+using xidio.Core.Diagnostics;
 using xidio.Core.Models;
 
 namespace xidio.Platform.Windows;
@@ -19,7 +21,7 @@ public sealed class WindowsPlatformNetworkDiagnosticsProvider : IPlatformNetwork
             Description = RuntimeInformation.OSDescription,
             Version = Environment.OSVersion.VersionString,
             Architecture = RuntimeInformation.ProcessArchitecture.ToString(),
-            XidioVersion = "0.1.0",
+            XidioVersion = XidioVersion.InformationalVersion,
             IsElevated = IsWindowsAdministrator()
         });
     }
@@ -132,7 +134,7 @@ public sealed class WindowsPlatformNetworkDiagnosticsProvider : IPlatformNetwork
         }, cancellationToken);
     }
 
-    private static IReadOnlyCollection<string> GetPhysicalNetworkInterfaceIdsCore()
+    private static HashSet<string> GetPhysicalNetworkInterfaceIdsCore()
     {
         var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -165,7 +167,7 @@ public sealed class WindowsPlatformNetworkDiagnosticsProvider : IPlatformNetwork
         return result;
     }
 
-    private static IReadOnlyList<NetworkAdapterDriverInfo> GetNetworkAdapterDriverInfosCore()
+    private static List<NetworkAdapterDriverInfo> GetNetworkAdapterDriverInfosCore()
     {
         var driverVersions = GetDriverVersionsByPnpDeviceId();
         var result = new List<NetworkAdapterDriverInfo>();
@@ -238,7 +240,7 @@ public sealed class WindowsPlatformNetworkDiagnosticsProvider : IPlatformNetwork
         return null;
     }
 
-    private static IReadOnlyList<InterfaceMetricInfo> GetInterfaceMetricsCore(
+    private static List<InterfaceMetricInfo> GetInterfaceMetricsCore(
         NetworkInterface networkInterface,
         CancellationToken cancellationToken)
     {
@@ -274,7 +276,7 @@ public sealed class WindowsPlatformNetworkDiagnosticsProvider : IPlatformNetwork
         return result;
     }
 
-    private static IReadOnlyList<NetworkNeighborInfo> GetNetworkNeighborsCore(
+    private static List<NetworkNeighborInfo> GetNetworkNeighborsCore(
         NetworkInterface networkInterface,
         CancellationToken cancellationToken)
     {
@@ -311,7 +313,7 @@ public sealed class WindowsPlatformNetworkDiagnosticsProvider : IPlatformNetwork
         return result;
     }
 
-    private static IReadOnlyList<DefaultRouteInfo> GetDefaultRoutesCore(CancellationToken cancellationToken)
+    private static List<DefaultRouteInfo> GetDefaultRoutesCore(CancellationToken cancellationToken)
     {
         var result = new List<DefaultRouteInfo>();
 
@@ -350,7 +352,7 @@ public sealed class WindowsPlatformNetworkDiagnosticsProvider : IPlatformNetwork
             .ToList();
     }
 
-    private static IReadOnlyList<InterfaceRouteInfo> GetRoutesCore(
+    private static List<InterfaceRouteInfo> GetRoutesCore(
         NetworkInterface networkInterface,
         CancellationToken cancellationToken)
     {
@@ -525,7 +527,7 @@ public sealed class WindowsPlatformNetworkDiagnosticsProvider : IPlatformNetwork
             4 => "Stale",
             5 => "Reachable",
             6 => "Permanent",
-            _ => state.ToString()
+            _ => state.ToString(CultureInfo.InvariantCulture)
         };
     }
 

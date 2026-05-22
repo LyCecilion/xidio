@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Globalization;
 using Spectre.Console;
+using xidio.Core.Diagnostics;
 using xidio.Core.Models;
 
 namespace xidio.CLI;
@@ -23,7 +25,8 @@ internal static class ConsoleDiagnosticReporter
 
     public static void PrintBanner()
     {
-        AnsiConsole.MarkupLine("[purple]Welcome to xidio.CLI v0.1.0, Xidian Internet Diagnostic Intelligence Operator.[/]");
+        AnsiConsole.MarkupLine(
+            $"[purple]Welcome to xidio.CLI v{Markup.Escape(XidioVersion.InformationalVersion)}, Xidian Internet Diagnostic Intelligence Operator.[/]");
         AnsiConsole.MarkupLine("[purple]This project is developed by Project Hazelita, and uses the MIT license.[/]");
         AnsiConsole.WriteLine();
     }
@@ -34,12 +37,12 @@ internal static class ConsoleDiagnosticReporter
 
         var summaryTable = CreateKeyValueTable();
         summaryTable.AddRow("报告生成时间", Escape($"{report.CollectedAt:yyyy-MM-dd HH:mm:ss}"));
-        summaryTable.AddRow("报告生成 Unix 时间戳", report.CollectedAt.ToUnixTimeSeconds().ToString());
+        summaryTable.AddRow("报告生成 Unix 时间戳", FormatInvariant(report.CollectedAt.ToUnixTimeSeconds()));
         summaryTable.AddRow("主机名", Escape(report.HostName));
         summaryTable.AddRow("系统代理", FormatProxyStatus(report.SystemProxy));
-        summaryTable.AddRow("网络接口总数", report.TotalNetworkInterfaceCount.ToString());
-        summaryTable.AddRow("主要网络接口个数", report.PrimaryInterfaces.Count.ToString());
-        summaryTable.AddRow("物理适配器个数", report.NetworkAdapterDriverInfos.Count.ToString());
+        summaryTable.AddRow("网络接口总数", FormatInvariant(report.TotalNetworkInterfaceCount));
+        summaryTable.AddRow("主要网络接口个数", FormatInvariant(report.PrimaryInterfaces.Count));
+        summaryTable.AddRow("物理适配器个数", FormatInvariant(report.NetworkAdapterDriverInfos.Count));
 
         AnsiConsole.Write(summaryTable);
     }
@@ -277,7 +280,9 @@ internal static class ConsoleDiagnosticReporter
         detailsTable.AddRow("接口类型", Escape(primaryInterface.NetworkInterfaceType.ToString()));
         detailsTable.AddRow("MAC 地址", Escape(primaryInterface.MacAddress ?? "<unavailable>"));
         detailsTable.AddRow("链路速度", Escape(FormatLinkSpeed(primaryInterface.LinkSpeedBitsPerSecond)));
-        detailsTable.AddRow("MTU", Escape(primaryInterface.Mtu?.ToString() ?? "<unavailable>"));
+        detailsTable.AddRow("MTU", Escape(primaryInterface.Mtu is null
+            ? "<unavailable>"
+            : FormatInvariant(primaryInterface.Mtu.Value)));
 
         if (primaryInterface.WirelessConnection is not null)
         {
@@ -394,7 +399,7 @@ internal static class ConsoleDiagnosticReporter
                 Escape(network.Ssid),
                 Escape(network.SignalQualityPercent is null ? "<unknown>" : $"{network.SignalQualityPercent}%"),
                 Escape($"{network.Authentication ?? "<unknown>"} / {network.Cipher ?? "<unknown>"}"),
-                Escape(network.BssidCount?.ToString() ?? "<unknown>"));
+                Escape(network.BssidCount is null ? "<unknown>" : FormatInvariant(network.BssidCount.Value)));
         }
 
         AnsiConsole.Write(wirelessTable);
@@ -430,7 +435,7 @@ internal static class ConsoleDiagnosticReporter
 
         routeTable.AddRow(
             label,
-            familyRoutes.Count.ToString(),
+            FormatInvariant(familyRoutes.Count),
             FormatStringList(defaultRoutes),
             FormatStringList(sampleRoutes));
     }
@@ -614,7 +619,7 @@ internal static class ConsoleDiagnosticReporter
     private static string FormatWirelessChannel(WirelessConnectionInfo wireless)
     {
         var frequency = wireless.FrequencyGhz is null ? "<unknown>" : $"{wireless.FrequencyGhz:0.###} GHz";
-        var channel = wireless.Channel is null ? "<unknown>" : wireless.Channel.ToString();
+        var channel = wireless.Channel is null ? "<unknown>" : FormatInvariant(wireless.Channel.Value);
 
         return $"{frequency}, channel {channel}";
     }
@@ -659,7 +664,7 @@ internal static class ConsoleDiagnosticReporter
 
     private static string FormatHttpResult(HttpProbeResult result)
     {
-        var status = result.StatusCode is null ? "<none>" : result.StatusCode.ToString();
+        var status = result.StatusCode is null ? "<none>" : FormatInvariant(result.StatusCode.Value);
         var suffix = string.IsNullOrWhiteSpace(result.Error) ? "" : $"; {result.Error}";
 
         return Escape($"{result.Uri}; status {status}; {FormatDuration(result.Duration)}{suffix}");
@@ -744,5 +749,15 @@ internal static class ConsoleDiagnosticReporter
     private static string Escape(string value)
     {
         return Markup.Escape(value);
+    }
+
+    private static string FormatInvariant(int value)
+    {
+        return value.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private static string FormatInvariant(long value)
+    {
+        return value.ToString(CultureInfo.InvariantCulture);
     }
 }
