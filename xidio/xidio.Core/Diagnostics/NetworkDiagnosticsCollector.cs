@@ -95,8 +95,14 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
             cancellationToken);
         ReportProgress(progress, NetworkDiagnosticStage.DefaultRoutes, "已读取默认路由信息", 7);
 
-        var systemProxy = SafeGet(GetSystemProxyInfo, new SystemProxyInfo { IsEnabled = false });
-        ReportProgress(progress, NetworkDiagnosticStage.SystemProxy, "已读取系统代理状态", 8);
+        var systemProxy = userScenario.CollectSensitiveSystemInformation
+            ? SafeGet(GetSystemProxyInfo, new SystemProxyInfo { WasCollected = true, IsEnabled = false })
+            : new SystemProxyInfo { WasCollected = false, IsEnabled = false };
+        ReportProgress(
+            progress,
+            NetworkDiagnosticStage.SystemProxy,
+            systemProxy.WasCollected ? "已读取系统代理状态" : "已跳过未授权的系统代理收集",
+            8);
 
         var probeResults = await CollectProbeResultsAsync(primaryInterfaces, progress, cancellationToken);
         ReportProgress(progress, NetworkDiagnosticStage.ActiveProbes, "已完成主动探测", 9);
@@ -819,6 +825,7 @@ public sealed class NetworkDiagnosticsCollector(IPlatformNetworkDiagnosticsProvi
 
         return new SystemProxyInfo
         {
+            WasCollected = true,
             IsEnabled = isEnabled,
             ProxyUri = isEnabled ? proxyUri : null
         };

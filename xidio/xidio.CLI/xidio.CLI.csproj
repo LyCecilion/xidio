@@ -19,7 +19,19 @@
     <ProjectReference Include="..\xidio.Platform.Windows\xidio.Platform.Windows.csproj" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' != 'net10.0-windows'">
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0' and $([MSBuild]::IsOSPlatform('Linux'))">
+    <DefineConstants>$(DefineConstants);LINUX</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0' and $([MSBuild]::IsOSPlatform('OSX'))">
+    <DefineConstants>$(DefineConstants);MACOS</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0' and $([MSBuild]::IsOSPlatform('Linux'))">
+    <ProjectReference Include="..\xidio.Platform.Linux\xidio.Platform.Linux.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0' and $([MSBuild]::IsOSPlatform('OSX'))">
     <ProjectReference Include="..\xidio.Platform.macOS\xidio.Platform.macOS.csproj" />
   </ItemGroup>
 
