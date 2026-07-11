@@ -28,7 +28,7 @@ xidio 的灵感来自 [NanCunChild](https://github.com/NanCunChild) 的 [Marduk]
 - **交互式场景问询**：通过 CLI 收集位置、连接方式、问题现象与影响范围，为后续判断补充用户上下文。
 - **分层网络信息收集**：收集操作系统、时间、网络接口、IP、DHCP、DNS、默认路由、邻居表和主动探测结果。
 - **Windows 深度适配**：利用 Windows 系统能力获取网卡、Wi-Fi、路由、代理与 PPPoE 等诊断信息。
-- **跨平台架构**：通用诊断逻辑位于 `xidio.Core`，平台差异由独立 Provider 隔离；当前已有 Windows 和 macOS Provider，Linux Provider 正在路线图中。
+- **跨平台架构**：通用诊断逻辑位于 `xidio.Core`，平台差异由独立 Provider 隔离；当前已有 Windows、Linux 和 macOS Provider。
 - **结构化与可取消**：核心诊断输出结构化数据，长时间任务支持进度报告和 `CancellationToken`。
 
 ## 🚀 Quick Start
@@ -53,6 +53,7 @@ xidio/
 ├── xidio/
 │   ├── xidio.CLI/                   # 命令行入口与交互式报告
 │   ├── xidio.Core/                  # 诊断模型、收集、分析与抽象
+│   ├── xidio.Platform.Linux/        # Linux 平台 Provider
 │   ├── xidio.Platform.Windows/      # Windows 平台 Provider
 │   ├── xidio.Platform.macOS/        # macOS 平台 Provider
 │   └── xidio.slnx                   # .NET 解决方案
@@ -84,6 +85,8 @@ dotnet run --project xidio/xidio.CLI/xidio.CLI.csproj -f net10.0-windows
 
 可以从发行版安装 .NET 10 SDK，也可使用 Nix。原生 SDK 环境下：
 
+Linux Provider 会按需调用 `ip`、`nmcli` 和 `iw`；建议安装 `iproute2`、NetworkManager 与 `iw`。命令不存在时，xidio 仍会返回 .NET 与 `/sys` 可获取的其他诊断信息。
+
 ```bash
 dotnet restore xidio/xidio.CLI/xidio.CLI.csproj
 dotnet build xidio/xidio.CLI/xidio.CLI.csproj -c Debug -f net10.0
@@ -106,7 +109,7 @@ dotnet build xidio/xidio.CLI/xidio.CLI.csproj -c Debug -f net10.0
 dotnet run --project xidio/xidio.CLI/xidio.CLI.csproj -f net10.0
 ```
 
-Apple Silicon 与 Intel Mac 也可使用已启用 `aarch64-darwin` 和 `x86_64-darwin` 的 `nix develop`。
+Apple Silicon Mac 也可使用已启用 `aarch64-darwin` 的 `nix develop`。当前 nixpkgs 已不再支持 `x86_64-darwin`，Intel Mac 请使用原生 .NET 10 SDK。
 
 ## 🗺️ Roadmap
 

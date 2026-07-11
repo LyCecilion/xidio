@@ -4,6 +4,12 @@
 
 本文档格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### Added
+
+- 增加 Linux 平台 Provider，支持系统与权限、物理网卡与驱动、Wi-Fi、DHCP、路由、metric、默认路由和邻居表信息收集。
+
 ## [0.1.0] - 2026-05-22
 
 ### Added
@@ -16,3 +22,4 @@
 - 增加 CI、标签发布工作流与 Nerdbank.GitVersioning 版本管理。
 
 [0.1.0]: https://github.com/LyCecilion/xidio/releases/tag/v0.1.0
+[Unreleased]: https://github.com/LyCecilion/xidio/compare/v0.1.0...HEAD
