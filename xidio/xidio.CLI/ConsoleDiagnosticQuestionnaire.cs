@@ -59,13 +59,23 @@ internal static class ConsoleDiagnosticQuestionnaire
                     new("不清楚", ImpactScope.Unknown)
                 ]);
 
+        cancellationToken.ThrowIfCancellationRequested();
+        var collectSensitiveSystemInformation = AnsiConsole.Prompt(
+            new ConfirmationPrompt(
+                "是否同意 xidio 进一步收集系统代理等敏感系统信息？诊断结果不会自动上报。")
+            {
+                DefaultValue = false
+            });
+        cancellationToken.ThrowIfCancellationRequested();
+
         return Task.FromResult(new UserScenarioInfo
         {
             Location = location,
             ConnectionMethod = connectionMethod,
             AccessMethod = accessMethod,
             ProblemSymptom = problemSymptom,
-            ImpactScope = impactScope
+            ImpactScope = impactScope,
+            CollectSensitiveSystemInformation = collectSensitiveSystemInformation
         });
     }
 

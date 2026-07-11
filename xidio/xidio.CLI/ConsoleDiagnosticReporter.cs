@@ -92,6 +92,7 @@ internal static class ConsoleDiagnosticReporter
         scenarioTable.AddRow("接入方式", Escape(FormatNetworkAccessMethod(scenario.AccessMethod)));
         scenarioTable.AddRow("主要问题", Escape(FormatProblemSymptom(scenario.ProblemSymptom)));
         scenarioTable.AddRow("影响范围", Escape(FormatImpactScope(scenario.ImpactScope, scenario.ProblemSymptom)));
+        scenarioTable.AddRow("敏感系统信息收集", FormatBool(scenario.CollectSensitiveSystemInformation));
 
         AnsiConsole.Write(scenarioTable);
     }
@@ -549,6 +550,9 @@ internal static class ConsoleDiagnosticReporter
 
     private static string FormatProxyStatus(SystemProxyInfo systemProxy)
     {
+        if (!systemProxy.WasCollected)
+            return "[grey]未收集（未经授权）[/]";
+
         return systemProxy.IsEnabled
             ? $"[yellow]on[/] {Escape(systemProxy.ProxyUri?.ToString() ?? "<unknown>")}"
             : "[green]off[/]";
