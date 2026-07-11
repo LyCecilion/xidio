@@ -20,4 +20,6 @@ public sealed class UserScenarioInfo
     public required ProblemSymptom ProblemSymptom { get; init; }
 
     public required ImpactScope ImpactScope { get; init; }
+
+    public bool CollectSensitiveSystemInformation { get; init; }
 }
