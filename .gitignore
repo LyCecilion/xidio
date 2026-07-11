@@ -1,5 +1,5 @@
-# Created by https://www.toptal.com/developers/gitignore/api/windows,linux,macos,visualstudio,rider,csharp
-# Edit at https://www.toptal.com/developers/gitignore?templates=windows,linux,macos,visualstudio,rider,csharp
+# Created by https://www.toptal.com/developers/gitignore/api/windows,linux,macos,direnv,visualstudio,visualstudiocode,rider,csharp
+# Edit at https://www.toptal.com/developers/gitignore?templates=windows,linux,macos,direnv,visualstudio,visualstudiocode,rider,csharp
 
 ### Csharp ###
 ## Ignore Visual Studio temporary files, build results, and
@@ -399,6 +399,9 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 
+### direnv ###
+/.direnv/
+
 ### Linux ###
 
 # temporary files which can be created if a process still has a handle open of a deleted file
@@ -524,6 +527,19 @@ fabric.properties
 
 # Android studio 3.1+ serialized cache file
 .idea/caches/build_file_checksums.ser
+
+### VisualStudioCode ###
+!.vscode/*.code-snippets
+
+# Local History for Visual Studio Code
+
+# Built Visual Studio Code Extensions
+*.vsix
+
+### VisualStudioCode Patch ###
+# Ignore all local history of files
+.history
+.ionide
 
 ### Windows ###
 # Windows thumbnail cache files
@@ -727,6 +743,6 @@ $RECYCLE.BIN/
 ### VisualStudio Patch ###
 # Additional files built by Visual Studio
 
-# End of https://www.toptal.com/developers/gitignore/api/windows,linux,macos,visualstudio,rider,csharp
+# End of https://www.toptal.com/developers/gitignore/api/windows,linux,macos,direnv,visualstudio,visualstudiocode,rider,csharp
 
 *.lscache
