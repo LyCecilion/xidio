@@ -278,7 +278,7 @@ internal static class ConsoleDiagnosticReporter
         detailsTable.AddRow("已连接", FormatBool(primaryInterface.IsConnected));
         detailsTable.AddRow("状态", FormatOperationalStatus(primaryInterface.OperationalStatus));
         detailsTable.AddRow("接口类型", Escape(primaryInterface.NetworkInterfaceType.ToString()));
-        detailsTable.AddRow("MAC 地址", Escape(primaryInterface.MacAddress ?? "<unavailable>"));
+        detailsTable.AddRow("MAC 地址", Escape(FormatHardwareAddress(primaryInterface.MacAddress)));
         detailsTable.AddRow("链路速度", Escape(FormatLinkSpeed(primaryInterface.LinkSpeedBitsPerSecond)));
         detailsTable.AddRow("MTU", Escape(primaryInterface.Mtu is null
             ? "<unavailable>"
@@ -287,7 +287,7 @@ internal static class ConsoleDiagnosticReporter
         if (primaryInterface.WirelessConnection is not null)
         {
             detailsTable.AddRow("SSID", Escape(primaryInterface.WirelessConnection.Ssid));
-            detailsTable.AddRow("BSSID", Escape(primaryInterface.WirelessConnection.Bssid));
+            detailsTable.AddRow("BSSID", Escape(FormatHardwareAddress(primaryInterface.WirelessConnection.Bssid)));
             detailsTable.AddRow("RSSI", Escape(primaryInterface.WirelessConnection.RssiDbm is null
                 ? "<unavailable>"
                 : $"{primaryInterface.WirelessConnection.RssiDbm} dBm"));
@@ -371,7 +371,7 @@ internal static class ConsoleDiagnosticReporter
             neighborTable.AddRow(
                 Escape(FormatAddressFamily(neighbor.AddressFamily)),
                 Escape(neighbor.IpAddress),
-                Escape(string.IsNullOrWhiteSpace(neighbor.LinkLayerAddress) ? "<none>" : neighbor.LinkLayerAddress),
+                Escape(FormatHardwareAddress(neighbor.LinkLayerAddress, "<none>")),
                 Escape(neighbor.State));
         }
 
@@ -635,6 +635,19 @@ internal static class ConsoleDiagnosticReporter
         var tx = wireless.TransmitRateMbps is null ? "<unknown>" : $"{wireless.TransmitRateMbps:0.##} Mbps";
 
         return $"Rx {rx}, Tx {tx}";
+    }
+
+    private static string FormatHardwareAddress(string? address, string unavailable = "<unavailable>")
+    {
+        if (string.IsNullOrWhiteSpace(address))
+            return unavailable;
+
+        var separator = address.Contains(':') ? ':' : '-';
+        var parts = address.Split(separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        return parts.Length == 6 && parts.All(part => part.Length == 2)
+            ? string.Join(separator, parts.Take(3).Concat(["XX", "XX", "XX"]))
+            : "<redacted>";
     }
 
     private static string FormatDnsResult(DnsProbeResult result)
