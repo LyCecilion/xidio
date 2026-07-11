@@ -5,7 +5,9 @@ using xidio.Core.Diagnostics;
 using xidio.Core.Models;
 #if WINDOWS
 using xidio.Platform.Windows;
-#else
+#elif LINUX
+using xidio.Platform.Linux;
+#elif MACOS
 using xidio.Platform.macOS;
 #endif
 
@@ -74,10 +76,11 @@ internal static class Program
     {
 #if WINDOWS
         return new WindowsPlatformNetworkDiagnosticsProvider();
+#elif LINUX
+        return new LinuxPlatformNetworkDiagnosticsProvider();
+#elif MACOS
+        return new MacPlatformNetworkDiagnosticsProvider();
 #else
-        if (OperatingSystem.IsMacOS())
-            return new MacPlatformNetworkDiagnosticsProvider();
-
         return NoopPlatformNetworkDiagnosticsProvider.Instance;
 #endif
     }

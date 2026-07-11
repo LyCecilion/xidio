@@ -8,6 +8,7 @@
 
 - `xidio.Core`：xidio 的核心模块，封装了所有诊断、修复和上报逻辑，供 CLI 与 GUI 调用。
 - `xidio.CLI`：xidio 的命令行版本，同时也可作为终端内的交互式工具使用。我们将使用 `System.CommandLine` 和 `Spectre.Console`。
+- `xidio.Platform.*`：Windows、Linux 与 macOS 的平台专用信息收集 Provider。
 - `xidio.GUI`：xidio 的图形界面版本，基于 Avalonia 框架实现跨平台功能。
 
 ### xidio 的调用能力和平台特性

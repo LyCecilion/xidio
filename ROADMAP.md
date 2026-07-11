@@ -23,7 +23,7 @@ xidio 需要在 Windows、Linux 和 macOS 上完成“信息收集 → 分层分
 
 ### 0.2 跨平台收集补全
 
-- [ ] 建立并接入 `xidio.Platform.Linux`。
+- [x] 建立并接入 `xidio.Platform.Linux`，收集系统、物理网卡、Wi-Fi、DHCP、路由、metric 与邻居表信息。
 - [ ] 对齐 Windows、Linux 和 macOS 的基础系统、网卡、路由、DNS、邻居表、代理与 Wi-Fi 收集能力。
 - [ ] 补全 PPPoE 链路、会话、错误码与路由检查。
 - [ ] 为外部命令解析与平台特性增加测试。

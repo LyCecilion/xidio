@@ -11,7 +11,6 @@
       supportedSystems = [
         "x86_64-linux"
         "aarch64-linux"
-        "x86_64-darwin"
         "aarch64-darwin"
       ];
 
@@ -32,7 +31,10 @@
             ]
             ++ lib.optionals stdenv.isLinux [
               clang
+              iproute2
+              iw
               lld
+              networkmanager
             ];
 
             buildInputs = with pkgs; [
