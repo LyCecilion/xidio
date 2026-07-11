@@ -21,7 +21,7 @@ _✨**Xidian Internet Diagnostic Intelligence Operator**✨_\
 
 xidio _(Xidian Internet Diagnostic Intelligence Operator)_ 是一款由 Project Hazelita 开发的西安电子科技大学校园网诊断工具。项目基于 C# 和 .NET 10，面向 Windows、Linux 与 macOS，希望将分散的网卡、IP、DHCP、DNS、路由、Wi-Fi 及主动探测信息整理为可理解、可上报的诊断结果。
 
-xidio 的灵感来自 [NanCunChild](https://github.com/NanCunChild) 的 [Marduk](https://github.com/NanCunChild/Marduk)。项目当前处于早期开发阶段：v0.1.0 已提供 CLI 与以 Windows 为主的信息收集能力，其他平台与完整分析、修复、上报功能仍在实现中。
+xidio 的灵感来自 [NanCunChild](https://github.com/NanCunChild) 的 [Marduk](https://github.com/NanCunChild/Marduk)。项目当前处于早期开发阶段：v0.1.1 已提供 CLI 与 Windows、Linux、macOS 平台 Provider，完整分析、修复与上报功能仍在实现中。
 
 ## ✨ Features
 
